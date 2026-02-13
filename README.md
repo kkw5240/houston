@@ -49,8 +49,12 @@ Click **"Use this template"** on GitHub, then:
 git clone https://github.com/your-name/houston.git workspace
 cd workspace
 
+# Initialize (builds adapters, installs hooks, sets up global CLI)
+houston init
+# → Installs `houston` to /usr/local/bin for use from any directory
+
 # Register your first repository
-scripts/houston-dock.sh https://github.com/org/my-backend.git --code XX --name "My Backend"
+houston dock https://github.com/org/my-backend.git --code XX --name "My Backend"
 
 # Check fleet status
 houston status
@@ -72,6 +76,8 @@ houston init
 .houston/build.sh
 ```
 
+> `houston init` automatically creates a symlink at `/usr/local/bin/houston`, so the CLI works from any directory — just like `git` or `git-flow`.
+
 ## Core Concepts
 
 ### Repo-per-Ticket
@@ -87,6 +93,31 @@ houston ticket XX T-XX-100 login-fix
 houston close my-project/T-XX-100-login-fix
 # → Verifies no unpushed commits
 # → Deletes the workspace
+```
+
+### Session Resume
+
+AI agents lose context between sessions. Houston solves this with a **zero-overhead resume** — it derives state from existing artifacts (git commits, ticket checkboxes) instead of requiring manual state tracking.
+
+```bash
+houston resume T-XX-100
+# 🛰️  Resuming T-XX-100: login fix
+#    Status: Active
+#
+# 📋 Change Sets:
+#    ✅ CS-01: Done (my-project-backend)
+#    🔧 CS-02: WIP (my-project-backend)
+#
+# 📌 Implementation Plan (current CS):
+#    ✅ IP-01: Add login endpoint
+#    ⬜ IP-02: Add rate limiting
+#    ⬜ IP-03: Write acceptance tests
+#
+# 📂 Ticket Workspaces:
+#    📁 my-project/T-XX-100-login-fix/
+#       Branch: feat/T-XX-100--CS-02
+#       Last commit: abc1234 ✨ feat: add login endpoint
+#       ⚠️  Uncommitted changes: 2 file(s)
 ```
 
 ### Documentation-First
@@ -146,7 +177,9 @@ houston/
 │   ├── houston-status.sh   # Fleet status
 │   ├── houston-active.sh   # Active ticket workspaces
 │   ├── houston-briefing.sh # Session briefing
+│   ├── houston-resume.sh   # Resume interrupted ticket work
 │   ├── houston-archive.sh  # Archive completed changesets
+│   ├── houston-publish.sh  # Sync to public repo (sanitized)
 │   ├── new_ticket.sh       # Create ticket workspace
 │   └── close_ticket.sh     # Close ticket workspace
 ├── tickets/                # Ticket files (one per task)
@@ -174,15 +207,17 @@ houston/
 ## Houston CLI
 
 ```bash
-houston ticket <CODE> <TICKET_ID> [DESC]   # Create ticket workspace
-houston close  <TICKET_PATH>               # Close ticket workspace
-houston active                             # Show active workspaces
-houston briefing                           # Session status overview
-houston status [--fetch]                   # Fleet status
-houston info   <CODE>                      # Project info
-houston archive [--days N] [--dry-run]     # Archive completed changesets
+houston ticket  <CODE> <TICKET_ID> [DESC]   # Create ticket workspace
+houston close   <TICKET_PATH>               # Close ticket workspace
+houston resume  <TICKET_ID>                 # Resume interrupted work
+houston active                              # Show active workspaces
+houston briefing                            # Session status overview
+houston status  [--fetch]                   # Fleet status
+houston info    <CODE>                      # Project info
+houston archive [--days N] [--dry-run]      # Archive completed changesets
+houston publish [--dry-run]                 # Sync to public repo
 houston build                              # Rebuild agent adapters
-houston init   [path]                      # Initialize new workspace
+houston init    [path]                      # Initialize new workspace
 ```
 
 ## Customization
