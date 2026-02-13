@@ -493,18 +493,36 @@ if [ ! -d ".git" ]; then
   git init
 fi
 
-echo "[5/5] Running first Houston build..."
+echo "[5/6] Running first Houston build..."
 .houston/build.sh
 
 # ---- Install hooks ----
 .houston/install-hooks.sh
 
+# ---- Global CLI symlink ----
+echo "[6/6] Installing global CLI..."
+HOUSTON_CLI="$TARGET/scripts/houston"
+GLOBAL_LINK="/usr/local/bin/houston"
+
+if [ -f "$HOUSTON_CLI" ]; then
+  if [ -L "$GLOBAL_LINK" ] && [ "$(readlink "$GLOBAL_LINK")" = "$HOUSTON_CLI" ]; then
+    echo "   ✅ Global CLI already linked."
+  elif ln -sf "$HOUSTON_CLI" "$GLOBAL_LINK" 2>/dev/null; then
+    echo "   ✅ Global CLI installed: $GLOBAL_LINK → $HOUSTON_CLI"
+  else
+    echo "   ⚠️  Could not create symlink (permission denied)."
+    echo "   Run manually: sudo ln -sf \"$HOUSTON_CLI\" \"$GLOBAL_LINK\""
+  fi
+else
+  echo "   ⚠️  CLI script not found: $HOUSTON_CLI"
+fi
+
 echo ""
 echo "✅ Houston workspace initialized!"
 echo ""
 echo "📋 Next steps:"
-echo "   1. Register your repos:  scripts/houston-dock.sh <repo_url> --code <CODE>"
-echo "   2. Check fleet status:   scripts/houston-status.sh"
+echo "   1. Register your repos:  houston dock <repo_url> --code <CODE>"
+echo "   2. Check fleet status:   houston status"
 echo "   3. Create your first ticket and start working!"
 echo ""
 echo "📡 Houston is ready for launch."
