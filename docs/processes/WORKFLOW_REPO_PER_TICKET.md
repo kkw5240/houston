@@ -3,99 +3,101 @@
 > **Authoritative source**: `.houston/PROCESSES.md` §1. This file is the detailed reference.
 > Inline agent instructions (CLAUDE.md etc.) are auto-generated from `.houston/` — keep them in sync.
 
+> **Source**: Extracted from `workspace/README.md` (Legacy) and `docs/guides/AI_AGENT_GUIDE.md`.
+
 ## 1. Concept: Disposable Workspace
 
-To solve **environment contamination** and **context switching** problems when handling multiple tickets simultaneously, we use a **Repo-per-Ticket** isolation workflow.
+동시에 여러 티켓을 처리할 때 발생하는 **환경 오염**과 **컨텍스트 스위칭** 문제를 해결하기 위해 **티켓 단위 격리(Repo-per-Ticket)** 워크플로우를 사용합니다.
 
-### 1.1 Problem: Single Workspace Limitations
+### 1.1 Problem: Single Workspace 방식의 한계
 
-| Problem | Description |
+| 문제 | 설명 |
 |------|------|
-| **No physical parallelism** | Working on Ticket A, then urgent Ticket B requires git stash. Only one server port. |
-| **Environment contamination** | .env and DB configs mixed, causing conflicts between tickets |
-| **Human error** | Starting work on wrong branch, committing directly to develop |
+| **물리적 병렬 처리 불가** | 티켓 A 작업 중 티켓 B 긴급 수정 시 git stash 필요. 서버 포트도 하나뿐. |
+| **환경 오염 위험** | .env, DB 설정이 섞여 있어 티켓 간 설정 충돌 발생 가능 |
+| **Human Error** | 잘못된 브랜치에서 작업 시작, develop에 직접 커밋 등 실수 |
 
 ### 1.2 Solution: Disposable Workspace
 
 ```
 workspace/
 ├── my-project/
-│   ├── source/                       # [Source] Read-Only origin (always latest remote)
-│   ├── T-XX-100-feature-a/           # [Ticket A] Isolated workspace
-│   └── T-XX-200-urgent-fix/          # [Ticket B] Isolated workspace
-└── scripts/                          # Workspace automation scripts
+│   ├── source/                       # [Source] Read-Only 원본 (항상 최신 remote)
+│   ├── T-XX-100-feature-a/     # [Ticket A] 격리된 작업 공간
+│   └── T-XX-200-urgent-fix/         # [Ticket B] 격리된 작업 공간
+└── scripts/                          # Workspace 자동화 스크립트
 ```
 
 ### 1.3 Workflow: Copy & Spawn → Use & Destroy
 
 1.  **Source Repo = Template**
-    *   `source/` is always kept at the latest remote state
-    *   Never code directly here (Read-Only)
+    *   `source/` (구 master)는 항상 최신 remote 상태 유지
+    *   여기서 직접 코딩하지 않음 (Read-Only 권장)
 
-2.  **Copy & Spawn** (start ticket)
+2.  **Copy & Spawn** (티켓 시작)
     ```bash
     ./scripts/new_ticket.sh ../my-project/source T-XX-100 feature-a
     # Creates: my-project/T-XX-100-feature-a/
     ```
-    - Full copy of source creates an isolated environment
-    - Server ports, DB configs can be freely changed
+    - Source를 통째로 복사하여 격리된 환경 생성
+    - 서버 포트, DB 설정을 자유롭게 변경 가능
 
-3.  **Use & Destroy** (complete ticket)
+3.  **Use & Destroy** (티켓 완료)
     ```bash
     ./scripts/close_ticket.sh ./my-project/T-XX-100-feature-a
     ```
-    - Delete ticket folder after PR merge
-    - Reclaim disk space
+    - PR 머지 후 티켓 폴더 삭제
+    - 디스크 공간 회수
 
 ### 1.4 Benefits
 
-| Benefit | Description |
+| 장점 | 설명 |
 |------|------|
-| **Complete isolation** | Changes in Ticket A don't affect Ticket B |
-| **Parallel processing** | Run multiple servers simultaneously for comparison |
-| **Easy rollback** | Just delete the folder to revert |
-| **Reduced cognitive load** | Switch folders instead of branches |
+| **완전한 격리** | 티켓 A의 변경이 티켓 B에 영향 없음 |
+| **병렬 처리** | 여러 서버를 동시에 띄워 비교 가능 |
+| **롤백 용이** | 문제 발생 시 폴더만 삭제하면 원복 |
+| **인지 부하 감소** | 브랜치 전환 없이 폴더만 이동 |
 
 ---
 
 ## 2. Execution Guide (How-to)
 
-How AI Agents execute tickets in the **Repo-per-Ticket** model.
+**Repo-per-Ticket** 모델에서 AI Agent가 티켓을 실행하는 방법입니다.
 
 ### 2.1 When to Use
 
-- When project group folder structure is set up (e.g., `../my-project/source/`)
-- When handling multiple tickets simultaneously
-- When environment isolation is needed
+- 프로젝트 그룹 폴더 구조가 설정된 경우 (e.g., `../my-project/source/`)
+- 동시에 여러 티켓을 처리해야 하는 경우
+- 환경 격리가 필요한 경우
 
 ### 2.2 Execution Flow
 
 ```
-1. Check/create ticket folder
-   └── Use scripts/new_ticket.sh or manual copy
+1. 티켓 폴더 확인/생성
+   └── scripts/new_ticket.sh 사용 또는 수동 복사
 
-2. Move to ticket folder
-   └── cd {project}/{ticket-folder}/
+2. 티켓 폴더로 이동
+   └── cd lines-{project}/{ticket-folder}/
 
-3. Execute standard ticket process
+3. 일반 티켓 실행 프로세스 진행
    └── [Pre] → [Tasks] → [Post]
 
-4. Cleanup after completion
-   └── Use scripts/close_ticket.sh or manual delete
+4. 완료 후 정리
+   └── scripts/close_ticket.sh 사용 또는 수동 삭제
 ```
 
 ### 2.3 Script Usage
 
-**Start ticket:**
+**티켓 시작:**
 ```bash
-./scripts/new_ticket.sh <SOURCE_PATH> <TICKET_ID> [DESCRIPTION]
+./scripts/new_ticket.sh <MASTER_PATH> <TICKET_ID> [DESCRIPTION]
 # Example:
-./scripts/new_ticket.sh ../my-project/source T-XX-100 "feature-a"
+./scripts/new_ticket.sh ../my-project/source T-XX-100 "login-fix"
 # Creates: my-project/T-XX-100-feature-a/
-# Branch: feat/T-XX-100--CS-01
+# Branch: feat/T-XX-100-feature-a
 ```
 
-**Close ticket:**
+**티켓 종료:**
 ```bash
 ./scripts/close_ticket.sh <TICKET_PATH>
 # Example:
@@ -105,30 +107,30 @@ How AI Agents execute tickets in the **Repo-per-Ticket** model.
 
 ### 2.4 Important Rules
 
-1. **Protect Source Repo**: Never work directly in `source/` folder
-2. **Folder Naming**: Follow `T-{ProjectCode}-{IssueID}-{description}` format
-3. **Branch Creation**: Create `feat/T-{ID}--CS-01` branch inside ticket folder
-4. **Cleanup Required**: Delete ticket folder after PR merge (disk management)
+1. **Source Repo 보호**: `source/` 폴더에서 직접 작업하지 않음
+2. **폴더 명명**: `T-{ProjectCode}-{IssueID}-{description}` 형식 준수
+3. **브랜치 생성**: 티켓 폴더 내에서 `feat/T-{ID}--CS-01` 브랜치 생성
+4. **정리 필수**: PR 머지 후 티켓 폴더 삭제 (디스크 관리)
 
 ### 2.5 Without Scripts (Manual Process)
 
-When scripts are not available:
+스크립트가 없는 경우 수동으로 진행:
 
 ```bash
-# 1. Update source
+# 1. Source 업데이트
 cd ../my-project/source
-git pull origin master
+git pull origin stage
 
-# 2. Create ticket folder (copy)
+# 2. 티켓 폴더 생성 (복사)
 cp -R . ../T-XX-100-feature-a
 cd ../T-XX-100-feature-a
 
-# 3. Create branch
-git checkout -b feat/T-XX-100--CS-01
+# 3. 브랜치 생성
+git checkout -b feat/T-XX-100-feature-a
 
-# 4. Work...
+# 4. 작업 진행...
 
-# 5. Delete after completion (check unpushed commits first)
+# 5. 완료 후 삭제 (unpushed commits 확인 후)
 cd ..
 rm -rf T-XX-100-feature-a
 ```
@@ -154,7 +156,7 @@ When the user requests multiple tasks at once (e.g., sub-issues within one paren
 **Priority decision criteria** (highest first):
 
 1. **Hotfix / Production incident** — always top priority
-2. **User-specified priority** — "Do A first" etc.
+2. **User-specified priority** — "A 먼저 해줘" etc.
 3. **Blocker resolution** — unblocks another task's dependency
 4. **Quick Win** — shortest time to completion
 5. **FIFO** — when none of the above apply

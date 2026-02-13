@@ -99,10 +99,10 @@ Some tasks don't involve application code. For these, the full BDD/TDD cycle is 
 **When NO ticket is needed at all:**
 
 Some interactions don't produce deliverables. Skip the entire ticket/branch/PR process for:
-- **Questions**: "What does this code do?", "How does this API work?"
-- **Troubleshooting**: "DB connection failed", "Help with build error"
-- **Code Review**: "Review this PR"
-- **Exploration**: "Analyze this module structure"
+- **Questions**: "이 코드 뭐야?", "이 API 어떻게 동작해?"
+- **Troubleshooting**: "DB 연결 안 돼", "빌드 에러 도와줘"
+- **Code Review**: "이 PR 리뷰해줘"
+- **Exploration**: "이 모듈 구조 분석해줘"
 
 Rule of thumb: If the task produces NO code change or document change, no ticket is needed.
 
@@ -200,8 +200,8 @@ When the user's instruction conflicts with Houston rules:
 3. **Record it** — Add a note in the ticket's Notes section: `⚠️ User override: {what was skipped and why}`
 
 **Examples:**
-- User: "Skip the tests" → Explain: "Skipping acceptance tests risks regression. Proceed?" → User confirms → Proceed + record
-- User: "Update docs later" → Explain: "Documentation-First rule violation. Easy to forget later." → User confirms → Proceed + record
+- User: "테스트 안 써도 돼" → Explain: "Acceptance test 생략 시 regression 위험. 계속할까요?" → User confirms → Proceed + record
+- User: "docs 업데이트 나중에 해" → Explain: "Documentation-First 규칙 위반. 나중에 잊을 수 있음." → User confirms → Proceed + record
 
 > Never silently skip a rule. Never refuse a direct user instruction. Always explain, then comply.
 

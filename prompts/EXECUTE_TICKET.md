@@ -1,71 +1,73 @@
 # Ticket Execution Prompt
 
-Use this prompt to request an AI agent to execute a created ticket.
+생성된 티켓을 AI 에이전트에게 실행 요청할 때 사용합니다.
 
 ---
 
 ## Prompt Template
 
-### Basic (Full Ticket Execution)
+### 기본 (전체 티켓 실행)
 ```
-T-{ProjectCode}-{IssueID} — execute this ticket.
-Follow the workspace/README.md process.
-```
-
-### Partial Execution / Session Resume
-
-Use when a session was interrupted or only specific work needs to be done.
-
-```
-# Start from a specific CS
-T-{ProjectCode}-{IssueID} — start from CS-02.
-
-# Start from a specific IP within a CS (useful for session resume)
-T-{ProjectCode}-{IssueID} — resume from CS-01 IP-03.
+T-{ProjectCode}-{IssueID} 처리해줘.
+workspace/README.md 프로세스 따라서.
 ```
 
-**Terminology:**
-- **CS (Change Set)**: Work group unit ([Pre] → [Tasks] → [Post] structure)
-- **IP (Implementation Plan item)**: Individual task item within a CS's [Tasks] section
+### 부분 실행 / 세션 재개
+
+세션이 비정상 종료되거나 특정 작업만 실행할 때 사용합니다.
+
+```
+# 특정 CS부터 실행
+T-{ProjectCode}-{IssueID}의 CS-02부터 진행해.
+
+# 특정 CS 내 IP부터 실행 (세션 재개 시 유용)
+T-{ProjectCode}-{IssueID}의 CS-01 IP-03부터 진행해.
+```
+
+**용어 참고:**
+- **CS (Change Set)**: 작업 그룹 단위 ([Pre] → [Tasks] → [Post] 구조)
+- **IP (Implementation Plan item)**: CS 내 [Tasks]의 개별 작업 항목
 
 ---
 
-## Examples
+## 예시
 
-### Full Ticket Execution
+### 전체 티켓 실행
 ```
-T-XX-100 — execute this ticket.
-Follow the workspace/README.md process.
-```
-
-### Session Resume (from specific IP)
-```
-T-XX-100 — resume from CS-01 IP-03.
-# → Resumes from the 3rd task item in CS-01
+T-YY-100 처리해줘.
+workspace/README.md 프로세스 따라서.
 ```
 
-### Execute Specific CS Only
+### 세션 재개 (특정 IP부터)
 ```
-T-XX-100 — execute CS-02 only.
-# → Runs CS-02 from [Pre] through [Post]
+T-ZZ-100의 CS-01 IP-03부터 진행해.
+# → CS-01의 [Tasks] 중 3번째 항목(예: Repository 코드)부터 재개
+```
+
+### 특정 CS만 실행
+```
+T-XX-100의 CS-02만 처리해줘.
+# → CS-02의 [Pre]부터 [Post]까지 실행
 ```
 
 ---
 
-## AI Agent Notes
+## AI Agent 참고사항
 
-When executing a ticket, follow this order:
+티켓 실행 시 다음 순서로 진행:
 
-1. **Checklist**: Check Houston Session Checklist (required)
-2. Read `workspace/README.md` (process rules)
-3. Read ticket file (`tickets/T-{ProjectCode}-{IssueID}-*.md`)
-4. Execute Implementation Plan in order
-   - CS order: CS-01 → CS-02 → ...
-   - Within each CS: [Pre] → [Tasks] → [Post]
-5. Update `tasks/CHANGESETS.md` on completion
+1. **Checklist**: [`tasks/START_TASK_CHECKLIST.md`](../tasks/START_TASK_CHECKLIST.md) 확인 (필수)
+2. `workspace/README.md` 읽기 (프로세스 확인)
+3. 티켓 파일 읽기 (`tickets/T-{ProjectCode}-{IssueID}-*.md`)
+4. 티켓의 Implementation Plan 순서대로 진행
+   - CS 순서: CS-01 → CS-02 → ...
+   - 각 CS 내부: [Pre] → [Tasks] → [Post]
+4. 완료 시 `tasks/CHANGESETS.md` 업데이트
 
-### Session Resume
+### 세션 재개 시
 
-1. Check ticket Evidence section for last completed CS
-2. Check `tasks/CHANGESETS.md` for current status
-3. Resume from the interrupted point
+1. 티켓 Evidence 섹션에서 마지막 완료 CS 확인
+2. `tasks/CHANGESETS.md`에서 진행 상태 확인
+3. 중단된 지점부터 재개
+
+> 상세 가이드: [`docs/guides/AI_AGENT_GUIDE.md`](../docs/guides/AI_AGENT_GUIDE.md)

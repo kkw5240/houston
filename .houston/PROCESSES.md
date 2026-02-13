@@ -22,7 +22,7 @@ workspace/{project}/
 
 Before creating a ticket workspace, identify the target repo:
 1. Check `.houston/fleet.yaml` — fleet manifest (which repos are docked)
-2. Match project code to repo: XX → my-project, YY → another-project, etc.
+2. Match project code to repo: BW → my-project, EH → another-project, etc.
 3. Source path convention: `{project-folder}/source/` (read-only, always synced to remote)
 4. If the repo is not listed or the path doesn't exist, ask the user.
 
@@ -59,7 +59,7 @@ If scripts are not available in the workspace:
 
 ```bash
 # 1. Update source to latest
-cd ../my-project/source && git pull origin stage
+cd ../lines-{project}/source && git pull origin stage
 
 # 2. Copy to ticket folder
 cp -R . ../T-{ID}-{description}
@@ -111,7 +111,7 @@ When the user requests multiple tasks at once (e.g., sub-issues within one paren
 **Priority decision criteria** (highest first):
 
 1. **Hotfix / Production incident** — always top priority
-2. **User-specified priority** — "Do A first" etc.
+2. **User-specified priority** — "A 먼저 해줘" etc.
 3. **Blocker resolution** — unblocks another task's dependency
 4. **Quick Win** — shortest time to completion
 5. **FIFO** — when none of the above apply
@@ -184,7 +184,7 @@ tests/
 | Fix | `fix/T-{Project}-{ID}--CS-{Seq}` | `stage` |
 | Hotfix | `hotfix/T-{Project}-{ID}--{desc}` | `main` + `stage` |
 
-**Project codes**: Define your own in `.houston/fleet.yaml` (e.g., `XX`, `YY`, `ZZ`)
+**Project codes**: EH (Another Project), BW (My Project), PS (Third Project), BF (Fourth Project), IM (Fifth Project)
 
 **Hotfix rules**:
 - MUST create PR (no direct push to main)
@@ -208,7 +208,7 @@ When the user declares a task as **Hotfix** (production emergency):
 **What is skipped**: Full BDD scenario suite, acceptance test-first cycle, docs-first update
 **What is NOT skipped**: Ticket creation (minimal), regression test, PR, evidence recording
 
-> The user must explicitly declare a task as "Hotfix" to trigger this track.
+> The user must explicitly say "Hotfix" or "긴급" to trigger this track.
 > If unclear, ask: "Is this a production emergency (Hotfix) or a normal fix?"
 
 ---

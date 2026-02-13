@@ -1,6 +1,6 @@
 # Architecture Standards
 
-This document defines the **target architecture** for projects managed by Houston.
+This document defines the **target architecture** for Your Organization projects.
 
 > ⚠️ **Not all repositories follow this yet.**
 > Always check the repo's `CLAUDE.md` for the **current state**.

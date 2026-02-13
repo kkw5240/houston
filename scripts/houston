@@ -199,6 +199,10 @@ case "$CMD" in
     exec "$SCRIPT_DIR/houston-archive.sh" "$@"
     ;;
 
+  publish)
+    exec "$SCRIPT_DIR/houston-publish.sh" "$@"
+    ;;
+
   build)
     exec "$HOUSTON_ROOT/.houston/build.sh"
     ;;
@@ -216,6 +220,7 @@ case "$CMD" in
     echo "  status  [--fetch]                         Fleet status"
     echo "  info    <CODE>                            Show project info"
     echo "  archive [--days N] [--dry-run]              Archive completed Change Sets"
+    echo "  publish [--dry-run]                       Sync to public repo"
     echo "  build                                     Rebuild agent adapters"
     echo "  init    [path]                            Initialize new workspace"
     echo ""
@@ -223,7 +228,7 @@ case "$CMD" in
     echo "  houston ticket XX T-XX-100 feature-name"
     echo "  houston briefing"
     echo "  houston active"
-    echo "  houston info XX"
+    echo "  houston info YY"
     ;;
 
   *)

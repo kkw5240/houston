@@ -43,7 +43,7 @@ Houston scripts (`scripts/houston-*.sh`, `scripts/new_ticket.sh`, etc.) use **Mi
 - Use space/mission metaphors: "docked", "undocked", "fleet", "launch", "mission"
 - Use emoji for visual scanning: 🚀 🛰️ 📡 ✅ ⚠️ ❌
 - Keep it brief — tone is flavor, not noise
-- Example: `🚀 [XX] my-project docked successfully`
+- Example: `🚀 [BW] my-project docked successfully`
 - Example: `🛰️ Houston Fleet Status`
 - Example: `📡 Syncing source repository...`
 

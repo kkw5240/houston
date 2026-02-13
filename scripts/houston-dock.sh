@@ -7,8 +7,8 @@
 #   houston-dock.sh --existing <path> --code <CODE> [--name "<name>"] [--stack <stack>] [--has-claude-md]
 #
 # Examples:
-#   houston-dock.sh https://github.com/org/my-backend.git --code XX --branch master --name "My Backend"
-#   houston-dock.sh --existing ./my-project/source --code XX --name "My Backend"
+#   houston-dock.sh https://github.com/org/my-backend.git --code BW --branch master --name "My Backend Service"
+#   houston-dock.sh --existing ./my-project/source --code BW --name "My Backend Service"
 # ============================================================
 
 set -e
@@ -59,7 +59,7 @@ while [[ $# -gt 0 ]]; do
       echo "  $0 --existing <path> --code <CODE> [--name \"<name>\"] [--stack <stack>] [--has-claude-md]"
       echo ""
       echo "Options:"
-      echo "  --code         Project code (e.g., XX, YY) — REQUIRED"
+      echo "  --code         Project code (e.g., BW, EH, PR) — REQUIRED"
       echo "  --branch       Default branch (default: master)"
       echo "  --name         Human-readable repo name"
       echo "  --stack        Tech stack (e.g., python/fastapi, flutter)"
@@ -82,7 +82,7 @@ done
 
 # ---- Validation ----
 if [ -z "$CODE" ]; then
-  echo "❌ --code is required. Example: --code XX"
+  echo "❌ --code is required. Example: --code BW"
   exit 1
 fi
 
@@ -139,8 +139,9 @@ else
   # Clone mode: derive project folder name from URL
   REPO_BASENAME=$(basename "$REPO_URL" .git)
 
-  # Extract project folder name from URL
-  PROJECT_FOLDER=$(echo "$REPO_BASENAME" | sed -E 's/^([^-]+-[^-]+).*/\1/')
+  # Extract project folder name (e.g., my-project-backend -> my-project)
+  # Convention: first two segments joined by hyphen
+  PROJECT_FOLDER=$(echo "$REPO_BASENAME" | sed -E 's/^(lines-[^-]+|imdr-[^-]+).*/\1/')
   REL_PATH="${PROJECT_FOLDER}/source"
   TARGET_DIR="$WORKSPACE_DIR/$PROJECT_FOLDER"
 

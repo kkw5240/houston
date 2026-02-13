@@ -1,6 +1,6 @@
 # Team Onboarding: Houston Workspace
 
-"Houston" is not just an AI; it's the **Control Tower** for your entire engineering operation.
+"Houston" is not just an AI; it's the **Control Tower** for our entire engineering operation.
 This guide explains how human engineers should interact with the workspace, the AI agents, and each other.
 
 > **Target Audience**: New team members (Humans)
@@ -8,7 +8,7 @@ This guide explains how human engineers should interact with the workspace, the 
 
 ---
 
-## Core Philosophy
+## 🏗 Core Philosophy
 
 1.  **Documentation is the API**:
     *   We don't tell each other (or the AI) what to do in chat. We write it down in `tickets/` or `docs/`.
@@ -18,16 +18,16 @@ This guide explains how human engineers should interact with the workspace, the 
     *   We spin up disposable, lightweight repositories for every single ticket (Issue).
     *   This keeps context clean for AI and prevents regression.
 3.  **Agent Agnostic**:
-    *   Use any AI tool you like: **Claude**, **Cursor**, **Windsurf**, **Cline**, or others.
+    *   Use any AI tool you like: **Claude**, **Cursor**, **Windsurf**, **Cline**, or raw **GPT-4**.
     *   **Rule**: You must feed the "Context" defined below to your agent.
 
 ---
 
-## Prerequisites
+## 🛠 Prerequisites
 
 ### 1. Essential Tools
 -   **Git**: Version control.
--   **GitHub CLI (`gh`)**: Essential for scripts and issue syncing.
+-   **GitHub CLI (`gh`)**: Essential for scripts (`new_ticket.sh`) and issue syncing.
     ```bash
     brew install gh
     gh auth login
@@ -40,33 +40,36 @@ This guide explains how human engineers should interact with the workspace, the 
     git clone https://github.com/your-org/houston.git workspace
     cd workspace
     ```
-2.  Run the Houston init or check setup:
+2.  Run setup check:
     ```bash
-    houston init  # or: .houston/build.sh
+    ./scripts/check_env.sh
     ```
 
 ### 3. Service Repositories Setup
 The `workspace` controls the process, but you need the actual code to work on.
+Refer to [`REPO_INDEX.md`](../../REPO_INDEX.md) for the list of repositories.
 
 **Recommended Directory Structure:**
 ```text
-workspace-root/
-├── workspace/          (This repo — Houston)
+lines-root/
+├── workspace/          (This repo)
 ├── my-project/
-│   └── source/         (Clone your backend repo here)
-└── another-project/
+│   └── source/         (Clone my-project-backend here)
+└── fourth-project/
     └── source/
 ```
 
-**Dock a repository:**
+**Clone Example (My Project):**
 ```bash
-# From the workspace root
-scripts/houston-dock.sh https://github.com/org/my-backend.git --code XX --name "My Backend"
+mkdir -p ../my-project
+git clone https://github.com/org/my-project-backend.git ../my-project/source
+cd ../my-project/source
+git checkout stage  # My Project uses 'stage' as base for features
 ```
 
 ---
 
-## Workflow: The "Human" Loop
+## 🚀 Workflow: The "Human" Loop
 
 ### Step 1: Pick an Issue
 Find an issue in GitHub Project or **create one**.
@@ -88,9 +91,13 @@ This is the most crucial step. **Do not skip.**
 ### Step 3: Initialize Code Workspace
 Use our automation script to pull the code and create a safe sandbox.
 
+**Important**: Ensure your source repository is on the correct **Base Branch** before running this.
+-   **My Project**: `stage` (Features) or `master` (Hotfix)
+-   **Others**: `master`
+
 ```bash
-# houston ticket <CODE> <TICKET_ID> [DESC]
-houston ticket XX T-XX-100 login-fix
+# ./scripts/new_ticket.sh <Target_Repo_Path> <Ticket_ID> <Description>
+./scripts/new_ticket.sh ../my-project/source T-XX-100 login-fix
 ```
 
 ### Step 4: Summon Your Agent (The "Context Injection")
@@ -107,7 +114,7 @@ Open your AI tool in the **newly created folder** (e.g., `my-project/T-XX-100-lo
 -   **Claude.ai**: Drag & Drop files or Copy/Paste content.
 
 **Standard Prompt:**
-> Use [`prompts/EXECUTE_TICKET.md`](../../prompts/EXECUTE_TICKET.md) template.
+> Use [`prompts/EXECUTE_TICKET.md`](../../workspace/prompts/EXECUTE_TICKET.md) template.
 > OR: "Read `../../workspace/README.md` and `../../workspace/tickets/T-XX-100-Login-Fix.md`. Start with the 'Implementation Plan'."
 
 ### Step 5: Verify & Close
@@ -115,14 +122,14 @@ Open your AI tool in the **newly created folder** (e.g., `my-project/T-XX-100-lo
 2.  Commit & Push.
 3.  Close the specific ticket workspace (from workspace root):
     ```bash
-    houston close ./my-project/T-XX-100-login-fix
+    ./scripts/close_ticket.sh ./my-project/T-XX-100-login-fix
     ```
 4.  Update `tasks/CHANGESETS.md` in the Control Tower.
     > **Tip**: Use [`prompts/DAILY_SCRUM.md`](../../prompts/DAILY_SCRUM.md) to automate status updates.
 
 ---
 
-## Agent Protocol (Interface Standard)
+## 🤖 Agent Protocol (Interface Standard)
 
 Regardless of the AI tool, follow this communication protocol:
 
@@ -135,7 +142,7 @@ Regardless of the AI tool, follow this communication protocol:
 
 ---
 
-## Directory Structure for Humans
+## 📂 Directory Structure for Humans
 
 -   **`daily_scrum/`**: Human daily logs. (AI helps generate them).
 -   **`docs/`**: Long-term knowledge storage.

@@ -6,7 +6,7 @@
 #   houston-undock.sh <PROJECT_CODE>
 #
 # Example:
-#   houston-undock.sh XX
+#   houston-undock.sh BW
 #
 # Note: This does NOT delete the repo directory. You must remove it manually.
 # ============================================================
@@ -22,7 +22,7 @@ CODE="$1"
 # ---- Validation ----
 if [ -z "$CODE" ]; then
   echo "Usage: $0 <PROJECT_CODE>"
-  echo "Example: $0 XX"
+  echo "Example: $0 BW"
   exit 1
 fi
 
