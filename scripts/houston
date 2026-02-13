@@ -1,0 +1,234 @@
+#!/bin/bash
+# ============================================================
+# houston — Mission Control CLI
+#
+# Usage:
+#   houston ticket <CODE|PATH> <TICKET_ID> [DESC]
+#   houston close  <TICKET_PATH>
+#   houston status [--fetch]
+#   houston info   <CODE>
+#   houston archive [--days N] [--dry-run]
+#   houston build
+#   houston init   [path]
+#
+# Like git-flow, but for multi-repo workspace governance.
+# ============================================================
+
+set -e
+
+# --- Find Houston workspace root ---
+find_houston_root() {
+  local dir="$PWD"
+  while [ "$dir" != "/" ]; do
+    if [ -d "$dir/.houston" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+  return 1
+}
+
+# --- Resolve script directory ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# --- Commands that don't require an existing workspace ---
+case "${1:-}" in
+  init)
+    shift
+    exec "$SCRIPT_DIR/houston-init.sh" "$@"
+    ;;
+esac
+
+# --- All other commands require a Houston workspace ---
+HOUSTON_ROOT=$(find_houston_root) || {
+  echo "❌ Not inside a Houston workspace (.houston/ not found)" >&2
+  exit 1
+}
+
+FLEET="$HOUSTON_ROOT/.houston/fleet.yaml"
+
+# --- Fleet lookup helper ---
+# Reads fleet.yaml for a given project CODE and sets FLEET_PATH and FLEET_BRANCH
+fleet_lookup() {
+  local code="$1"
+
+  if [ ! -f "$FLEET" ]; then
+    echo "❌ Fleet manifest not found: $FLEET" >&2
+    return 1
+  fi
+
+  # Find the block for this code and extract path + branch
+  FLEET_PATH=""
+  FLEET_BRANCH=""
+  local found=false
+  while IFS= read -r line; do
+    if echo "$line" | grep -q "code: $code\$"; then
+      found=true
+      continue
+    fi
+    if $found; then
+      # Stop at next fleet entry or end
+      if echo "$line" | grep -q "^  - code:"; then
+        break
+      fi
+      case "$line" in
+        *path:*)   FLEET_PATH=$(echo "$line" | sed 's/.*path: *//')   ;;
+        *branch:*) FLEET_BRANCH=$(echo "$line" | sed 's/.*branch: *//');;
+      esac
+    fi
+  done < "$FLEET"
+
+  if [ -z "$FLEET_PATH" ]; then
+    echo "❌ Project code '$code' not found in fleet.yaml" >&2
+    return 1
+  fi
+
+  # Resolve to absolute path relative to Houston root
+  FLEET_PATH="$HOUSTON_ROOT/$FLEET_PATH"
+  return 0
+}
+
+# --- Fleet info helper ---
+fleet_info() {
+  local code="$1"
+
+  if [ ! -f "$FLEET" ]; then
+    echo "❌ Fleet manifest not found: $FLEET" >&2
+    return 1
+  fi
+
+  local found=false
+  local name="" repo="" path="" branch="" stack="" has_claude_md=""
+
+  while IFS= read -r line; do
+    if echo "$line" | grep -q "code: $code\$"; then
+      found=true
+      continue
+    fi
+    if $found; then
+      if echo "$line" | grep -q "^  - code:"; then
+        break
+      fi
+      case "$line" in
+        *name:*)          name=$(echo "$line" | sed 's/.*name: *//')          ;;
+        *repo:*)          repo=$(echo "$line" | sed 's/.*repo: *//')          ;;
+        *path:*)          path=$(echo "$line" | sed 's/.*path: *//')          ;;
+        *branch:*)        branch=$(echo "$line" | sed 's/.*branch: *//')      ;;
+        *stack:*)         stack=$(echo "$line" | sed 's/.*stack: *//')        ;;
+        *has_claude_md:*) has_claude_md=$(echo "$line" | sed 's/.*has_claude_md: *//');;
+      esac
+    fi
+  done < "$FLEET"
+
+  if ! $found; then
+    echo "❌ Project code '$code' not found in fleet.yaml" >&2
+    return 1
+  fi
+
+  local claude_icon="❌"
+  [ "$has_claude_md" = "true" ] && claude_icon="✅"
+
+  echo "📡 $name ($code)"
+  echo "   Repo:      $repo"
+  echo "   Path:      $path"
+  echo "   Stack:     $stack"
+  echo "   Branch:    $branch"
+  echo "   CLAUDE.md: $claude_icon"
+}
+
+# --- Command dispatch ---
+CMD="${1:-help}"
+shift || true
+
+case "$CMD" in
+  ticket)
+    SOURCE="$1"
+    TICKET_ID="${2:-}"
+    DESC="${3:-}"
+
+    if [ -z "$SOURCE" ] || [ -z "$TICKET_ID" ]; then
+      echo "Usage: houston ticket <CODE|PATH> <TICKET_ID> [DESC]"
+      echo ""
+      echo "Examples:"
+      echo "  houston ticket XX T-XX-100 feature-name"
+      echo "  houston ticket ../my-project/source T-XX-100 feature-name"
+      exit 1
+    fi
+
+    # Determine if CODE mode or PATH mode
+    if [[ "$SOURCE" != */* ]] && [ ! -d "$SOURCE" ]; then
+      # CODE mode: lookup from fleet.yaml
+      fleet_lookup "$SOURCE" || exit 1
+      # Pass resolved path + branch info to new_ticket.sh via env
+      export HOUSTON_BASE_BRANCH="$FLEET_BRANCH"
+      exec "$SCRIPT_DIR/new_ticket.sh" "$FLEET_PATH" "$TICKET_ID" "$DESC"
+    else
+      # PATH mode: direct path (backward compatible)
+      exec "$SCRIPT_DIR/new_ticket.sh" "$SOURCE" "$TICKET_ID" "$DESC"
+    fi
+    ;;
+
+  close)
+    exec "$SCRIPT_DIR/close_ticket.sh" "$@"
+    ;;
+
+  status)
+    exec "$SCRIPT_DIR/houston-status.sh" "$@"
+    ;;
+
+  active)
+    exec "$SCRIPT_DIR/houston-active.sh" "$@"
+    ;;
+
+  briefing|brief)
+    exec "$SCRIPT_DIR/houston-briefing.sh" "$@"
+    ;;
+
+  info)
+    CODE="$1"
+    if [ -z "$CODE" ]; then
+      echo "Usage: houston info <CODE>"
+      echo "Example: houston info XX"
+      exit 1
+    fi
+    fleet_info "$CODE"
+    ;;
+
+  archive)
+    exec "$SCRIPT_DIR/houston-archive.sh" "$@"
+    ;;
+
+  build)
+    exec "$HOUSTON_ROOT/.houston/build.sh"
+    ;;
+
+  help|--help|-h)
+    echo "🛰️  Houston — Mission Control CLI"
+    echo ""
+    echo "Usage: houston <command> [args]"
+    echo ""
+    echo "Commands:"
+    echo "  ticket  <CODE|PATH> <TICKET_ID> [DESC]   Create ticket workspace"
+    echo "  close   <TICKET_PATH>                     Close ticket workspace"
+    echo "  active                                    Show active workspaces"
+    echo "  briefing                                  Session briefing (status overview)"
+    echo "  status  [--fetch]                         Fleet status"
+    echo "  info    <CODE>                            Show project info"
+    echo "  archive [--days N] [--dry-run]              Archive completed Change Sets"
+    echo "  build                                     Rebuild agent adapters"
+    echo "  init    [path]                            Initialize new workspace"
+    echo ""
+    echo "Examples:"
+    echo "  houston ticket XX T-XX-100 feature-name"
+    echo "  houston briefing"
+    echo "  houston active"
+    echo "  houston info XX"
+    ;;
+
+  *)
+    echo "❌ Unknown command: $CMD" >&2
+    echo "Run 'houston help' for usage." >&2
+    exit 1
+    ;;
+esac

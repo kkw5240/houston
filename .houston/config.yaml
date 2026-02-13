@@ -1,0 +1,17 @@
+# Houston Workspace Configuration
+# Customize tools here. Process/policy rules live in .houston/*.md files.
+
+# Agent adapters to generate from .houston/ sources.
+# Each path is relative to workspace root.
+# Remove or add entries to match your team's AI tools.
+adapters:
+  - CLAUDE.md
+  - .cursorrules
+  - .windsurfrules
+  - GEMINI.md
+  - .github/copilot-instructions.md
+
+# Git hooks
+hooks:
+  # Auto-rebuild adapters when .houston/ source files change
+  pre_commit_build: true
