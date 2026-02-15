@@ -1,0 +1,42 @@
+#!/bin/bash
+# ============================================================
+# on-ticket-start.sh — Hook executed after ticket workspace creation
+#
+# Available environment variables:
+#   TICKET_ID      — e.g., "T-BW-1700"
+#   WORKSPACE_PATH — absolute path to the new workspace
+#   PROJECT_CODE   — e.g., "BW"
+#   BRANCH_NAME    — e.g., "feat/T-BW-1700--CS-01"
+#   HOUSTON_ROOT   — absolute path to Houston workspace root
+#
+# This hook is non-blocking: if it fails, a warning is printed
+# but workspace creation continues normally.
+#
+# To activate: copy this file without .example extension and chmod +x
+#   cp on-ticket-start.sh.example on-ticket-start.sh
+#   chmod +x on-ticket-start.sh
+# ============================================================
+
+echo "🔧 Running post-setup for $TICKET_ID ($PROJECT_CODE)..."
+
+cd "$WORKSPACE_PATH" || exit 1
+
+# Example: Python project setup
+# if [ -f "requirements.txt" ]; then
+#   echo "   📦 Installing Python dependencies..."
+#   pip install -r requirements.txt
+# fi
+
+# Example: Copy .env from template
+# if [ -f ".env.example" ] && [ ! -f ".env" ]; then
+#   echo "   📄 Creating .env from template..."
+#   cp .env.example .env
+# fi
+
+# Example: Node.js project setup
+# if [ -f "package.json" ]; then
+#   echo "   📦 Installing Node dependencies..."
+#   npm install
+# fi
+
+echo "✅ Setup hook complete for $TICKET_ID"
