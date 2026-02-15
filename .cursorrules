@@ -615,12 +615,27 @@ When reporting progress, follow this 4-stage interface:
 
 ---
 
-## 7. Daily Scrum
+## 7. Daily Scrum (2-Step Process)
 
+Daily Scrum은 **Sync**(데이터 정합성)와 **Report**(보고서 생성) 두 단계로 분리됩니다.
+
+### Step 1: Sync — Houston <-> GitHub 동기화
+
+- **Prompt**: `prompts/SYNC.md`
+- **When**: Daily Scrum 전, 또는 데이터 정합성이 필요할 때 독립 실행 가능
+- **What**: Houston 문서(TASK_BOARD, tickets, CHANGESETS)와 GitHub Issue 상태를 양방향 비교
+- **Policy**:
+  - GitHub → Houston: 자동 적용 (TASK_BOARD 갱신, ticket 메타데이터 동기화)
+  - Houston → GitHub: Dry-run (제안 목록만 출력, 수동 처리)
+- **Output**: Sync Report (제안 목록 + 자동 적용 결과 + 수동 확인 필요 항목)
+
+### Step 2: Report — Daily Scrum 보고서 생성
+
+- **Prompt**: `prompts/DAILY_SCRUM.md`
 - **Path**: `daily_scrum/{YYYY}/{MM}/{YYYY.MM.DD}.md`
-- **Prompt**: Use `prompts/DAILY_SCRUM.md` to generate the daily scrum update.
-- **When**: At the start of each working day, or when the user asks for status sync.
-- **Content**: Work done, planned work, blockers.
+- **When**: Sync 완료 후, 또는 업무 시작 시
+- **Prerequisite**: Step 1 Sync가 오늘 실행되었어야 함 (미실행 시 안내)
+- **Content**: 금일 수행 업무, 익일 계획 (Priority Score 기반 정렬), Sync Summary, 특이 사항
 
 ---
 

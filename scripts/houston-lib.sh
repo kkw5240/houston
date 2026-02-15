@@ -63,6 +63,7 @@ fleet_lookup() {
 
   FLEET_PATH=""
   FLEET_BRANCH=""
+  FLEET_ISSUE_REPO=""
   local found=false
   while IFS= read -r line; do
     if echo "$line" | grep -q "code: $code\$"; then
@@ -73,9 +74,11 @@ fleet_lookup() {
       if echo "$line" | grep -q "^  - code:"; then
         break
       fi
+      # NOTE: *issue_repo:* MUST be before *repo:* (if added) to avoid substring match
       case "$line" in
-        *path:*)   FLEET_PATH=$(echo "$line" | sed 's/.*path: *//')   ;;
-        *branch:*) FLEET_BRANCH=$(echo "$line" | sed 's/.*branch: *//');;
+        *issue_repo:*) FLEET_ISSUE_REPO=$(echo "$line" | sed 's/.*issue_repo: *//');;
+        *path:*)       FLEET_PATH=$(echo "$line" | sed 's/.*path: *//')       ;;
+        *branch:*)     FLEET_BRANCH=$(echo "$line" | sed 's/.*branch: *//')   ;;
       esac
     fi
   done < "$FLEET"
@@ -102,7 +105,7 @@ fleet_info() {
   fi
 
   local found=false
-  local name="" repo="" path="" branch="" stack="" has_claude_md=""
+  local name="" repo="" path="" branch="" stack="" has_claude_md="" issue_repo=""
 
   while IFS= read -r line; do
     if echo "$line" | grep -q "code: $code\$"; then
@@ -114,6 +117,7 @@ fleet_info() {
         break
       fi
       case "$line" in
+        *issue_repo:*)    issue_repo=$(echo "$line" | sed 's/.*issue_repo: *//');;
         *name:*)          name=$(echo "$line" | sed 's/.*name: *//')          ;;
         *repo:*)          repo=$(echo "$line" | sed 's/.*repo: *//')          ;;
         *path:*)          path=$(echo "$line" | sed 's/.*path: *//')          ;;
@@ -138,18 +142,37 @@ fleet_info() {
   echo "   Stack:     $stack"
   echo "   Branch:    $branch"
   echo "   CLAUDE.md: $claude_icon"
+  [ -n "$issue_repo" ] && echo "   Issues:    $issue_repo"
 }
 
 # --- fleet_parse_all() ---
-# Iterate all fleet entries and extract unique project directories.
-# Populates the PROJECT_DIRS array.
+# Iterate all fleet entries and extract project information.
+# Populates arrays: PROJECT_DIRS (unique parent dirs),
+#   FLEET_CODES, FLEET_ISSUE_REPOS (parallel arrays per entry).
 # Requires FLEET to be set.
 fleet_parse_all() {
   PROJECT_DIRS=()
+  FLEET_CODES=()
+  FLEET_ISSUE_REPOS=()
   if [ ! -f "$FLEET" ]; then
     return 1
   fi
+  local current_code="" current_issue_repo=""
   while IFS= read -r line; do
+    # Detect new entry
+    local code
+    code=$(echo "$line" | sed -n 's/.*code: *//p')
+    if [ -n "$code" ]; then
+      # Finalize previous entry
+      if [ -n "$current_code" ]; then
+        FLEET_CODES+=("$current_code")
+        FLEET_ISSUE_REPOS+=("$current_issue_repo")
+      fi
+      current_code="$code"
+      current_issue_repo=""
+      continue
+    fi
+    # Parse fields
     local path
     path=$(echo "$line" | sed -n 's/.*path: *//p')
     if [ -n "$path" ]; then
@@ -161,7 +184,15 @@ fleet_parse_all() {
       done
       $local_found || PROJECT_DIRS+=("$parent")
     fi
+    local ir
+    ir=$(echo "$line" | sed -n 's/.*issue_repo: *//p')
+    [ -n "$ir" ] && current_issue_repo="$ir"
   done < "$FLEET"
+  # Finalize last entry
+  if [ -n "$current_code" ]; then
+    FLEET_CODES+=("$current_code")
+    FLEET_ISSUE_REPOS+=("$current_issue_repo")
+  fi
 }
 
 # --- fleet_get_hook() ---
