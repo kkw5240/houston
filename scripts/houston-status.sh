@@ -25,18 +25,29 @@ fi
 
 # ---- Parse fleet.yaml ----
 # Extract entries as: code|name|path|branch
+# Finalize each entry when the next "code:" is seen (or at EOF).
 ENTRIES=()
+CURRENT_CODE="" CURRENT_NAME="" CURRENT_PATH="" CURRENT_BRANCH=""
+
+finalize_entry() {
+  if [ -n "$CURRENT_CODE" ] && [ -n "$CURRENT_PATH" ]; then
+    ENTRIES+=("${CURRENT_CODE}|${CURRENT_NAME}|${CURRENT_PATH}|${CURRENT_BRANCH}")
+  fi
+}
+
 while IFS= read -r line; do
   case "$line" in
-    *"code: "*)  CURRENT_CODE=$(echo "$line" | sed 's/.*code: //') ;;
-    *"name: "*)  CURRENT_NAME=$(echo "$line" | sed 's/.*name: //') ;;
-    *"path: "*)  CURRENT_PATH=$(echo "$line" | sed 's/.*path: //') ;;
-    *"branch: "*)
-      CURRENT_BRANCH=$(echo "$line" | sed 's/.*branch: //')
-      ENTRIES+=("${CURRENT_CODE}|${CURRENT_NAME}|${CURRENT_PATH}|${CURRENT_BRANCH}")
+    *"code: "*)
+      finalize_entry
+      CURRENT_CODE=$(echo "$line" | sed 's/.*code: //')
+      CURRENT_NAME="" CURRENT_PATH="" CURRENT_BRANCH=""
       ;;
+    *"name: "*)    CURRENT_NAME=$(echo "$line" | sed 's/.*name: //') ;;
+    *"path: "*)    CURRENT_PATH=$(echo "$line" | sed 's/.*path: //') ;;
+    *"branch: "*)  CURRENT_BRANCH=$(echo "$line" | sed 's/.*branch: //') ;;
   esac
 done < "$FLEET_FILE"
+finalize_entry
 
 if [ ${#ENTRIES[@]} -eq 0 ]; then
   echo "🛰️  Houston Fleet Status"
@@ -89,7 +100,7 @@ for entry in "${ENTRIES[@]}"; do
   fi
 
   # Check if it's a git repo
-  if [ ! -d "$FULL_PATH/.git" ]; then
+  if [ ! -e "$FULL_PATH/.git" ]; then
     STATUS="❌ Not a git repo"
     CURRENT_BRANCH="-"
     printf "   %-${MAX_CODE}s  %-${MAX_NAME}s  %-${MAX_BRANCH}s  %s\n" "$code" "$name" "$CURRENT_BRANCH" "$STATUS"

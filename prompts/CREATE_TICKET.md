@@ -36,6 +36,27 @@ GitHub Issue, Slack 메시지 등 다양한 소스에서 표준화된 티켓을 
 
 ---
 
+## Task Tags (템플릿)
+
+티켓 유형별 표준 패턴을 `prompts/tags/`에서 참조할 수 있습니다.
+티켓 생성 시 해당 태그 파일을 읽고, 포함된 패턴(필수 섹션, IP 패턴, 체크리스트)을 적용하세요.
+
+| Tag | 파일 | 용도 |
+|:---|:---|:---|
+| `@bug-fix` | `prompts/tags/@bug-fix.md` | 버그 수정 (regression test 필수) |
+| `@feature` | `prompts/tags/@feature.md` | 신규 기능 (acceptance test 필수) |
+| `@refactor` | `prompts/tags/@refactor.md` | 리팩토링 (기존 테스트 불변) |
+| `@hotfix` | `prompts/tags/@hotfix.md` | 긴급 핫픽스 (fast-track) |
+
+**사용 예시**:
+```
+다음 요청을 기반으로 @bug-fix 티켓을 생성해줘.
+```
+
+→ Agent는 `prompts/tags/@bug-fix.md`를 읽고 해당 패턴을 적용하여 티켓을 생성합니다.
+
+---
+
 ## AI Agent 참고사항
 
 ### 티켓 생성 순서

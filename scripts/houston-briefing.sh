@@ -10,21 +10,14 @@
 
 set -e
 
-# --- Find Houston root ---
-find_houston_root() {
-  local dir="$PWD"
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.houston" ]; then
-      echo "$dir"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  echo "❌ Not inside a Houston workspace" >&2
-  return 1
-}
+# --- Load common library ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/houston-lib.sh"
 
-HOUSTON_ROOT=$(find_houston_root) || exit 1
+HOUSTON_ROOT=$(find_houston_root) || {
+  echo "❌ Not inside a Houston workspace" >&2
+  exit 1
+}
 FLEET="$HOUSTON_ROOT/.houston/fleet.yaml"
 TASK_BOARD="$HOUSTON_ROOT/tasks/TASK_BOARD.md"
 CHANGESETS="$HOUSTON_ROOT/tasks/CHANGESETS.md"
@@ -46,19 +39,10 @@ TOTAL=0
 WORKSPACE_LINES=()
 
 # Collect project dirs from fleet
-PROJECT_DIRS=()
 if [ -f "$FLEET" ]; then
-  while IFS= read -r line; do
-    path=$(echo "$line" | sed -n 's/.*path: *//p')
-    if [ -n "$path" ]; then
-      parent=$(dirname "$path")
-      local_found=false
-      for existing in "${PROJECT_DIRS[@]}"; do
-        [ "$existing" = "$parent" ] && local_found=true && break
-      done
-      $local_found || PROJECT_DIRS+=("$parent")
-    fi
-  done < "$FLEET"
+  fleet_parse_all
+else
+  PROJECT_DIRS=()
 fi
 
 for project_dir in "${PROJECT_DIRS[@]}"; do
@@ -67,7 +51,7 @@ for project_dir in "${PROJECT_DIRS[@]}"; do
 
   for ticket_dir in "$abs_dir"/T-*; do
     [ ! -d "$ticket_dir" ] && continue
-    [ ! -d "$ticket_dir/.git" ] && continue
+    [ ! -e "$ticket_dir/.git" ] && continue
 
     TOTAL=$((TOTAL + 1))
     dirname_only=$(basename "$ticket_dir")

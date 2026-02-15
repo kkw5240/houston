@@ -10,21 +10,14 @@
 
 set -e
 
-# --- Find Houston root ---
-find_houston_root() {
-  local dir="$PWD"
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.houston" ]; then
-      echo "$dir"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  echo "❌ Not inside a Houston workspace" >&2
-  return 1
-}
+# --- Load common library ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/houston-lib.sh"
 
-HOUSTON_ROOT=$(find_houston_root) || exit 1
+HOUSTON_ROOT=$(find_houston_root) || {
+  echo "❌ Not inside a Houston workspace" >&2
+  exit 1
+}
 FLEET="$HOUSTON_ROOT/.houston/fleet.yaml"
 
 if [ ! -f "$FLEET" ]; then
@@ -42,20 +35,7 @@ TOTAL=0
 DIRTY_COUNT=0
 
 # Collect unique project directories from fleet.yaml
-PROJECT_DIRS=()
-while IFS= read -r line; do
-  path=$(echo "$line" | sed -n 's/.*path: *//p')
-  if [ -n "$path" ]; then
-    # Get parent dir (e.g., my-project/source → my-project)
-    parent=$(dirname "$path")
-    # Avoid duplicates
-    local_found=false
-    for existing in "${PROJECT_DIRS[@]}"; do
-      [ "$existing" = "$parent" ] && local_found=true && break
-    done
-    $local_found || PROJECT_DIRS+=("$parent")
-  fi
-done < "$FLEET"
+fleet_parse_all
 
 for project_dir in "${PROJECT_DIRS[@]}"; do
   abs_dir="$HOUSTON_ROOT/$project_dir"
@@ -65,7 +45,7 @@ for project_dir in "${PROJECT_DIRS[@]}"; do
   has_tickets=false
   for ticket_dir in "$abs_dir"/T-*; do
     [ ! -d "$ticket_dir" ] && continue
-    [ ! -d "$ticket_dir/.git" ] && continue
+    [ ! -e "$ticket_dir/.git" ] && continue
 
     if ! $has_tickets; then
       echo "📂 $project_dir/"

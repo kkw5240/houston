@@ -28,26 +28,29 @@ workspace/
 └── scripts/                          # Workspace 자동화 스크립트
 ```
 
-### 1.3 Workflow: Copy & Spawn → Use & Destroy
+### 1.3 Workflow: Worktree & Spawn → Use & Destroy
 
-1.  **Source Repo = Template**
+1.  **Source Repo = Main Worktree**
     *   `source/` (구 master)는 항상 최신 remote 상태 유지
-    *   여기서 직접 코딩하지 않음 (Read-Only 권장)
+    *   여기서 직접 코딩하지 않음 (Read-Only, main worktree)
 
-2.  **Copy & Spawn** (티켓 시작)
+2.  **Worktree & Spawn** (티켓 시작)
     ```bash
-    ./scripts/new_ticket.sh ../my-project/source T-XX-100 feature-a
-    # Creates: my-project/T-XX-100-feature-a/
+    houston ticket XX T-XX-100 feature-a
+    # Creates: my-project/T-XX-100-feature-a/ (git worktree)
+    # Branch: feat/T-XX-100--CS-01
     ```
-    - Source를 통째로 복사하여 격리된 환경 생성
+    - `git worktree add`로 경량 워크스페이스 생성 (`.git/` 복사 없음)
     - 서버 포트, DB 설정을 자유롭게 변경 가능
+    - Lifecycle hooks로 자동 setup 가능 (pip install, .env 복사 등)
 
 3.  **Use & Destroy** (티켓 완료)
     ```bash
-    ./scripts/close_ticket.sh ./my-project/T-XX-100-feature-a
+    houston close ./my-project/T-XX-100-feature-a
     ```
-    - PR 머지 후 티켓 폴더 삭제
-    - 디스크 공간 회수
+    - PR 생성 제안, CHANGESETS.md 갱신, 원격 브랜치 정리 (사용자 확인)
+    - `git worktree remove`로 워크스페이스 제거
+    - 디스크 공간 즉시 회수
 
 ### 1.4 Benefits
 
@@ -121,18 +124,15 @@ workspace/
 cd ../my-project/source
 git pull origin stage
 
-# 2. 티켓 폴더 생성 (복사)
-cp -R . ../T-XX-100-feature-a
+# 2. Worktree로 티켓 폴더 생성
+git worktree add ../T-XX-100-feature-a -b feat/T-XX-100--CS-01
 cd ../T-XX-100-feature-a
 
-# 3. 브랜치 생성
-git checkout -b feat/T-XX-100-feature-a
+# 3. 작업 진행...
 
-# 4. 작업 진행...
-
-# 5. 완료 후 삭제 (unpushed commits 확인 후)
+# 4. 완료 후 worktree 제거 (unpushed commits 확인 후)
 cd ..
-rm -rf T-XX-100-feature-a
+git -C source/ worktree remove T-XX-100-feature-a
 ```
 
 ---
@@ -144,7 +144,7 @@ When the user requests multiple tasks at once (e.g., sub-issues within one paren
 1. **Each task gets its own workspace** — Repo-per-Ticket applies per task, not per session
    - Task A → `T-{ID-A}-{desc}/` + branch `feat/T-{Project}-{ID-A}--CS-{Seq}`
    - Task B → `T-{ID-B}-{desc}/` + branch `feat/T-{Project}-{ID-B}--CS-{Seq}`
-2. **Same repo is OK** — multiple ticket workspaces can copy from the same `source/`
+2. **Same repo is OK** — multiple ticket workspaces can branch from the same `source/`
 3. **No cross-contamination** — never mix changes from different tasks in one workspace
 4. **Track separately** — each task gets its own CS row in `tasks/CHANGESETS.md`
 5. **Evidence per task** — each task must have its own commit hash / PR link

@@ -8,9 +8,9 @@ Summaries of core workflows. For full details, see `docs/processes/`.
 
 > Full doc: `docs/processes/WORKFLOW_REPO_PER_TICKET.md`
 
-Each ticket gets its own **disposable workspace** — a full copy of the source repo.
+Each ticket gets its own **disposable workspace** — a git worktree from the source repo.
 
-**Lifecycle**: Copy & Spawn → Use → Verify → Destroy
+**Lifecycle**: Worktree & Spawn → Use → Verify → Destroy
 
 ```
 workspace/{project}/
@@ -61,24 +61,38 @@ If scripts are not available in the workspace:
 # 1. Update source to latest
 cd ../lines-{project}/source && git pull origin stage
 
-# 2. Copy to ticket folder
-cp -R . ../T-{ID}-{description}
+# 2. Create worktree (preferred) or copy
+git worktree add ../T-{ID}-{description} -b feat/T-{Project}-{ID}--CS-01
 cd ../T-{ID}-{description}
 
-# 3. Create branch
-git checkout -b feat/T-{Project}-{ID}--CS-01
+# 3. Work...
 
-# 4. Work...
-
-# 5. After PR merge — delete ticket folder
-cd .. && rm -rf T-{ID}-{description}
+# 4. After PR merge — remove worktree
+cd .. && git -C source/ worktree remove T-{ID}-{description}
 ```
 
 **Key rules**:
-- NEVER work directly in `source/`. It is read-only.
+- NEVER work directly in `source/`. It is read-only (main worktree).
 - Folder naming: `T-{ProjectCode}-{IssueID}-{description}`
 - Branch naming: `feat/T-{ProjectCode}-{IssueID}--CS-{Seq}`
-- Always check for unpushed commits before deleting ticket folders.
+- Always check for unpushed commits before removing ticket workspaces.
+
+### Lifecycle Hooks
+
+Houston supports lifecycle hooks that run automatically on workspace events:
+
+- **on_ticket_start**: Runs after workspace creation (e.g., pip install, .env copy)
+- **on_ticket_end**: Runs before workspace removal (e.g., cleanup)
+
+Configure in `.houston/config.yaml` (global) or `.houston/fleet.yaml` (per-project override).
+Hooks are non-blocking: failure prints a warning but does not abort the operation.
+
+```yaml
+# .houston/config.yaml
+lifecycle_hooks:
+  on_ticket_start: ".houston/hooks/on-ticket-start.sh"
+  on_ticket_end: ".houston/hooks/on-ticket-end.sh"
+```
 
 ### Multi-Repo Tickets
 
@@ -99,7 +113,7 @@ When the user requests multiple tasks at once (e.g., sub-issues within one paren
 1. **Each task gets its own workspace** — Repo-per-Ticket applies per task, not per session
    - Task A → `T-{ID-A}-{desc}/` + branch `feat/T-{Project}-{ID-A}--CS-{Seq}`
    - Task B → `T-{ID-B}-{desc}/` + branch `feat/T-{Project}-{ID-B}--CS-{Seq}`
-2. **Same repo is OK** — multiple ticket workspaces can copy from the same `source/`
+2. **Same repo is OK** — multiple ticket workspaces can branch from the same `source/`
 3. **No cross-contamination** — never mix changes from different tasks in one workspace
 4. **Track separately** — each task gets its own CS row in `tasks/CHANGESETS.md`
 5. **Evidence per task** — each task must have its own commit hash / PR link

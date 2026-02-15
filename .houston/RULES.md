@@ -4,7 +4,7 @@ These rules are mandatory. They apply to every task, every session, every agent.
 
 ## 10 Golden Rules
 
-1. **Repo-per-Ticket**: Never work in `source/`. Copy to `T-{ID}` folder for isolation.
+1. **Repo-per-Ticket**: Never work in `source/`. Create a worktree in `T-{ID}` folder for isolation.
 2. **Docs-First**: Update or create design docs BEFORE writing code.
 3. **Source of Truth**: `tickets/` defines WHAT. `tasks/CHANGESETS.md` tracks STATUS.
 4. **Hierarchy**: `README.md` > `docs/` > repo-level `CLAUDE.md`.

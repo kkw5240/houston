@@ -16,18 +16,9 @@
 
 set -e
 
-# --- Find Houston workspace root ---
-find_houston_root() {
-  local dir="$PWD"
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.houston" ]; then
-      echo "$dir"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  return 1
-}
+# --- Load common library ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/houston-lib.sh"
 
 HOUSTON_ROOT=$(find_houston_root) || {
   echo "❌ Not inside a Houston workspace (.houston/ not found)" >&2

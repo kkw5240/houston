@@ -108,7 +108,7 @@ These rules are mandatory. They apply to every task, every session, every agent.
 
 ## 10 Golden Rules
 
-1. **Repo-per-Ticket**: Never work in `source/`. Copy to `T-{ID}` folder for isolation.
+1. **Repo-per-Ticket**: Never work in `source/`. Create a worktree in `T-{ID}` folder for isolation.
 2. **Docs-First**: Update or create design docs BEFORE writing code.
 3. **Source of Truth**: `tickets/` defines WHAT. `tasks/CHANGESETS.md` tracks STATUS.
 4. **Hierarchy**: `README.md` > `docs/` > repo-level `CLAUDE.md`.
@@ -431,7 +431,7 @@ echo "[3/5] Installing fleet scripts..."
 
 # Copy the houston-* scripts from the same directory as this init script
 INIT_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-for script in houston-dock.sh houston-undock.sh houston-status.sh; do
+for script in houston-lib.sh houston-dock.sh houston-undock.sh houston-status.sh; do
   if [ -f "$INIT_SCRIPT_DIR/$script" ]; then
     cp "$INIT_SCRIPT_DIR/$script" "$TARGET/scripts/$script"
     chmod +x "$TARGET/scripts/$script"

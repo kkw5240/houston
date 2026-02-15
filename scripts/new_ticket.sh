@@ -15,6 +15,10 @@
 
 set -e
 
+# --- Load common library ---
+source "$(cd "$(dirname "$0")" && pwd)/houston-lib.sh"
+HOUSTON_ROOT=$(find_houston_root 2>/dev/null) || true
+
 MASTER_PATH=$1
 TICKET_ID=$2
 DESC=$3
@@ -76,15 +80,9 @@ else
   git pull origin "$CURRENT" || { echo "⚠️  git pull failed (skipping)"; }
 fi
 
-# 2. Copy Repository
-echo "[2/3] 📂 Cloning to ticket workspace..."
-cp -R "$MASTER_ABS_PATH" "$TARGET_PATH"
+# 2. Auto-increment CS number: find existing feat/T-{ID}--CS-* branches
+echo "[2/3] 🌿 Resolving branch name..."
 
-# 3. Create Branch (Houston convention: feat/T-{ID}--CS-{NN})
-echo "[3/3] 🌿 Setting up git branch..."
-cd "$TARGET_PATH" || exit
-
-# Auto-increment CS number: find existing feat/T-{ID}--CS-* branches
 LAST_CS=$(git branch -a 2>/dev/null \
   | sed 's|.*remotes/origin/||; s|^ *||' \
   | grep "^feat/${TICKET_ID}--CS-" \
@@ -93,14 +91,26 @@ LAST_CS=$(git branch -a 2>/dev/null \
   | tail -1)
 
 if [ -n "$LAST_CS" ]; then
-  # Remove leading zeros for arithmetic, then re-pad
   NEXT_CS=$(printf "%02d" $(( 10#$LAST_CS + 1 )))
 else
   NEXT_CS="01"
 fi
 
 BRANCH_NAME="feat/${TICKET_ID}--CS-${NEXT_CS}"
-git checkout -b "$BRANCH_NAME"
+
+# 3. Create worktree (replaces cp -R + git checkout -b)
+echo "[3/3] 📂 Creating worktree workspace..."
+git worktree add "$TARGET_PATH" -b "$BRANCH_NAME"
+cd "$TARGET_PATH" || exit
+
+# 4. Run on_ticket_start hook
+# Extract project code from TICKET_ID (e.g., T-XX-100 → BW)
+PROJECT_CODE=$(echo "$TICKET_ID" | sed 's/^T-//; s/-.*//' | head -1)
+export TICKET_ID WORKSPACE_PATH="$TARGET_PATH" PROJECT_CODE BRANCH_NAME
+
+if [ -n "$HOUSTON_ROOT" ]; then
+  run_hook "on_ticket_start" "$PROJECT_CODE"
+fi
 
 echo ""
 echo "✅ Ticket workspace created!"

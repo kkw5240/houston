@@ -16,29 +16,18 @@
 
 set -e
 
-# --- Find Houston workspace root ---
-find_houston_root() {
-  local dir="$PWD"
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.houston" ]; then
-      echo "$dir"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  return 1
-}
-
-# --- Resolve script directory ---
-# Resolve symlinks to find real script directory
-SCRIPT_SOURCE="$0"
-while [ -L "$SCRIPT_SOURCE" ]; do
-  SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
-  SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
-  # Handle relative symlink
-  [[ "$SCRIPT_SOURCE" != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+# --- Load common library ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve symlinks (for global /usr/local/bin/houston symlink)
+source_path="$0"
+while [ -L "$source_path" ]; do
+  link_dir="$(cd "$(dirname "$source_path")" && pwd)"
+  source_path="$(readlink "$source_path")"
+  [[ "$source_path" != /* ]] && source_path="$link_dir/$source_path"
 done
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$source_path")" && pwd)"
+
+source "$SCRIPT_DIR/houston-lib.sh"
 
 # --- Commands that don't require an existing workspace ---
 case "${1:-}" in
@@ -55,95 +44,6 @@ HOUSTON_ROOT=$(find_houston_root) || {
 }
 
 FLEET="$HOUSTON_ROOT/.houston/fleet.yaml"
-
-# --- Fleet lookup helper ---
-# Reads fleet.yaml for a given project CODE and sets FLEET_PATH and FLEET_BRANCH
-fleet_lookup() {
-  local code="$1"
-
-  if [ ! -f "$FLEET" ]; then
-    echo "❌ Fleet manifest not found: $FLEET" >&2
-    return 1
-  fi
-
-  # Find the block for this code and extract path + branch
-  FLEET_PATH=""
-  FLEET_BRANCH=""
-  local found=false
-  while IFS= read -r line; do
-    if echo "$line" | grep -q "code: $code\$"; then
-      found=true
-      continue
-    fi
-    if $found; then
-      # Stop at next fleet entry or end
-      if echo "$line" | grep -q "^  - code:"; then
-        break
-      fi
-      case "$line" in
-        *path:*)   FLEET_PATH=$(echo "$line" | sed 's/.*path: *//')   ;;
-        *branch:*) FLEET_BRANCH=$(echo "$line" | sed 's/.*branch: *//');;
-      esac
-    fi
-  done < "$FLEET"
-
-  if [ -z "$FLEET_PATH" ]; then
-    echo "❌ Project code '$code' not found in fleet.yaml" >&2
-    return 1
-  fi
-
-  # Resolve to absolute path relative to Houston root
-  FLEET_PATH="$HOUSTON_ROOT/$FLEET_PATH"
-  return 0
-}
-
-# --- Fleet info helper ---
-fleet_info() {
-  local code="$1"
-
-  if [ ! -f "$FLEET" ]; then
-    echo "❌ Fleet manifest not found: $FLEET" >&2
-    return 1
-  fi
-
-  local found=false
-  local name="" repo="" path="" branch="" stack="" has_claude_md=""
-
-  while IFS= read -r line; do
-    if echo "$line" | grep -q "code: $code\$"; then
-      found=true
-      continue
-    fi
-    if $found; then
-      if echo "$line" | grep -q "^  - code:"; then
-        break
-      fi
-      case "$line" in
-        *name:*)          name=$(echo "$line" | sed 's/.*name: *//')          ;;
-        *repo:*)          repo=$(echo "$line" | sed 's/.*repo: *//')          ;;
-        *path:*)          path=$(echo "$line" | sed 's/.*path: *//')          ;;
-        *branch:*)        branch=$(echo "$line" | sed 's/.*branch: *//')      ;;
-        *stack:*)         stack=$(echo "$line" | sed 's/.*stack: *//')        ;;
-        *has_claude_md:*) has_claude_md=$(echo "$line" | sed 's/.*has_claude_md: *//');;
-      esac
-    fi
-  done < "$FLEET"
-
-  if ! $found; then
-    echo "❌ Project code '$code' not found in fleet.yaml" >&2
-    return 1
-  fi
-
-  local claude_icon="❌"
-  [ "$has_claude_md" = "true" ] && claude_icon="✅"
-
-  echo "📡 $name ($code)"
-  echo "   Repo:      $repo"
-  echo "   Path:      $path"
-  echo "   Stack:     $stack"
-  echo "   Branch:    $branch"
-  echo "   CLAUDE.md: $claude_icon"
-}
 
 # --- Command dispatch ---
 CMD="${1:-help}"
