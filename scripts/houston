@@ -195,6 +195,10 @@ case "$CMD" in
     fleet_info "$CODE"
     ;;
 
+  work)
+    exec "$SCRIPT_DIR/houston-work.sh" "$@"
+    ;;
+
   resume)
     exec "$SCRIPT_DIR/houston-resume.sh" "$@"
     ;;
@@ -223,7 +227,8 @@ case "$CMD" in
     echo "  briefing                                  Session briefing (status overview)"
     echo "  status  [--fetch]                         Fleet status"
     echo "  info    <CODE>                            Show project info"
-    echo "  resume  <TICKET_ID>                        Resume interrupted ticket work"
+    echo "  work    <TICKET_ID>                        Launch AI agent with ticket context"
+    echo "  resume  <TICKET_ID>                        Resume scan (without launching agent)"
     echo "  archive [--days N] [--dry-run]             Archive completed Change Sets"
     echo "  publish [--dry-run]                        Sync to public repo"
     echo "  build                                     Rebuild agent adapters"

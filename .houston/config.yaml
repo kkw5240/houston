@@ -11,6 +11,13 @@ adapters:
   - GEMINI.md
   - .github/copilot-instructions.md
 
+# AI Agent CLI for `houston work` command.
+# Supported: claude, gemini
+agent:
+  cli: claude
+  # auto_resume: automatically run resume scan and inject context
+  auto_resume: true
+
 # Git hooks
 hooks:
   # Auto-rebuild adapters when .houston/ source files change
