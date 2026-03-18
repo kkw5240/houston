@@ -97,12 +97,26 @@ if [ -n "$BRANCH_NAME" ] && [ "$BRANCH_NAME" != "HEAD" ]; then
   fi
 
   if [ "$HAS_REMOTE" -gt 0 ] && [ -z "$EXISTING_PR" ] && command -v gh &>/dev/null; then
+    # Determine PR base branch from fleet.yaml
+    PR_BASE=""
+    if [ -n "$HOUSTON_ROOT" ] && [ -n "$PROJECT_CODE" ]; then
+      FLEET_FILE="$HOUSTON_ROOT/.houston/fleet.yaml"
+      if [ -f "$FLEET_FILE" ]; then
+        PR_BASE=$(awk -v code="$PROJECT_CODE" '
+          /^  - code:/ { found = ($NF == code) }
+          found && /^    branch:/ { print $NF; exit }
+        ' "$FLEET_FILE")
+      fi
+    fi
+    PR_BASE="${PR_BASE:-master}"
+
     echo "📡 Branch '$BRANCH_NAME' is pushed but has no open PR."
+    echo "   Base branch: $PR_BASE (from fleet.yaml)"
     echo "   Create a PR? (y/N)"
     read -r PR_RESPONSE
     if [[ "$PR_RESPONSE" == "y" ]]; then
       echo "   Creating PR..."
-      gh pr create --base stage --head "$BRANCH_NAME" --fill 2>&1 || {
+      gh pr create --base "$PR_BASE" --head "$BRANCH_NAME" --fill 2>&1 || {
         echo "⚠️  PR creation failed (non-blocking)" >&2
       }
     fi

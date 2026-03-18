@@ -120,9 +120,9 @@ workspace/
 스크립트가 없는 경우 수동으로 진행:
 
 ```bash
-# 1. Source 업데이트
+# 1. Source 업데이트 ({base} = fleet.yaml의 branch 필드)
 cd ../my-project/source
-git pull origin stage
+git pull origin {base}
 
 # 2. Worktree로 티켓 폴더 생성
 git worktree add ../T-XX-100-feature-a -b feat/T-XX-100--CS-01

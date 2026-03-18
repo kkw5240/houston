@@ -201,6 +201,9 @@ When resuming interrupted work:
 
 ## Commit Rules
 
+> **Repo override**: 각 repo의 CLAUDE.md에 커밋 규칙이 정의되어 있으면 repo의 규칙을 따른다.
+> 아래는 repo에 별도 규칙이 없을 때 적용되는 Houston 기본값이다.
+
 **Message format:**
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -388,7 +391,7 @@ If scripts are not available in the workspace:
 
 ```bash
 # 1. Update source to latest
-cd ../lines-{project}/source && git pull origin stage
+cd ../lines-{project}/source && git pull origin {base}  # {base} = fleet.yaml의 branch 필드
 
 # 2. Create worktree (preferred) or copy
 git worktree add ../T-{ID}-{description} -b feat/T-{Project}-{ID}--CS-01
@@ -513,27 +516,15 @@ tests/
 
 ---
 
-## 3. Git Strategy (Stage-Based Flow)
+## 3. Git Conventions
 
-> Full doc: `docs/processes/PROCESS_GIT_STRATEGY.md`
+Git 브랜칭 전략, 커밋 포맷, PR 규칙 등은 **각 repo의 CLAUDE.md에서 정의**한다.
+Houston은 거버넌스(티켓, 증거, 프로세스)를 소유하며, 구현 컨벤션은 repo에 위임한다.
 
-**Branches**:
-
-| Type | Pattern | Merges Into |
-|:---|:---|:---|
-| Production | `main` / `master` | — |
-| Integration | `stage` | `main` (scheduled) |
-| Feature | `feat/T-{Project}-{ID}--CS-{Seq}` | `stage` |
-| Fix | `fix/T-{Project}-{ID}--CS-{Seq}` | `stage` |
-| Hotfix | `hotfix/T-{Project}-{ID}--{desc}` | `main` + `stage` |
+- `fleet.yaml`의 `branch` 필드가 해당 repo의 base branch를 결정한다.
+- Repo CLAUDE.md가 없는 경우, 기본적으로 `fleet.yaml`의 `branch`에서 분기하고 같은 branch로 PR한다.
 
 **Project codes**: EH (Another Project), BW (My Project), PS (Third Project), BF (Fourth Project), IM (Fifth Project)
-
-**Hotfix rules**:
-- MUST create PR (no direct push to main)
-- MUST be minimal scope (fix only)
-- MUST deploy and verify immediately
-- MUST sync back to stage after merge
 
 ### Hotfix Fast Track
 
@@ -541,12 +532,11 @@ When the user declares a task as **Hotfix** (production emergency):
 
 **Shortened process** — skip full BDD/TDD cycle:
 1. Create ticket (minimal: Summary + 1 Scenario)
-2. Branch: `hotfix/T-{Project}-{ID}--{desc}` from `main`
+2. Branch from production branch (check repo CLAUDE.md or fleet.yaml `branch` field)
 3. Write a **regression test** that reproduces the bug
 4. Fix the bug (minimal scope — fix only, no refactoring)
 5. Verify: regression test passes + existing tests don't break
-6. PR to `main` → deploy → verify in production
-7. Sync back to `stage`: merge `main` into `stage`
+6. PR to production branch → deploy → verify in production
 
 **What is skipped**: Full BDD scenario suite, acceptance test-first cycle, docs-first update
 **What is NOT skipped**: Ticket creation (minimal), regression test, PR, evidence recording

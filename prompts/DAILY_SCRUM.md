@@ -1,7 +1,8 @@
-# Daily Scrum Report Generator
+# Daily Scrum Report Generator (Commander / Backend View)
 
-Sync가 완료된 상태에서 Daily Scrum 보고서를 생성합니다.
+Sync가 완료된 상태에서 사령관(백엔드 개발자) 개인의 Daily Scrum 보고서를 생성합니다.
 데이터 수집은 **로컬 문서 기반**으로, GitHub API 호출을 최소화합니다.
+이 리포트는 철저히 사령관님 개인의 작업 트래킹과 코딩 진척도를 추적하기 위해 사용됩니다.
 
 > **Language**: Korean (한국어)
 > **Output Path**: `daily_scrum/{YYYY}/{MM}/{YYYY.MM.DD}.md`
@@ -26,9 +27,17 @@ Sync가 완료된 상태에서 Daily Scrum 보고서를 생성합니다.
 
 ## Phase 1: Data Collection (로컬 문서)
 
+### 스캔 범위
+
+사령관님(백엔드 개발자) 개인 뷰이므로 아래 범위만 수집한다.
+
+- **포함**: 사령관님이 assignee이거나, 직접 작업 중인 티켓 (전 프로젝트)
+- **포함**: 사령관님 티켓이 아니더라도 Blocker/Dependency 관계가 있는 티켓
+- **제외**: 타 담당자 전용 티켓 (FE, QA 등) — PM View(`PM_SCRUM.md`)에서 관리
+
 ### 1-1. TASK_BOARD.md 읽기
 
-`tasks/TASK_BOARD.md`에서 전체 티켓 상태를 수집한다.
+`tasks/TASK_BOARD.md`에서 위 스캔 범위에 해당하는 티켓 상태를 수집한다.
 
 | 수집 항목 | 소스 |
 |:---|:---|
@@ -55,17 +64,6 @@ Sync가 완료된 상태에서 Daily Scrum 보고서를 생성합니다.
 - 어제 "익일 계획"에 있던 항목 중 오늘 완료된 것 → "금일 수행 업무"로 이동
 - 어제 "특이 사항" 중 해결된 것 → 제거 또는 갱신
 
-### 1-4. Active Ticket Workspace Git Log
-
-fleet.yaml의 프로젝트 디렉터리에서 활성 ticket workspace들의 git log를 확인한다.
-
-```bash
-# 각 프로젝트 디렉터리 스캔
-# 예: my-project/T-BW-1702-*/
-#   → git log --oneline --since="today 00:00" (오늘 커밋 목록)
-#   → git status (uncommitted changes 유무)
-```
-
 ---
 
 ## Phase 2: Priority Score 계산
@@ -74,19 +72,21 @@ fleet.yaml의 프로젝트 디렉터리에서 활성 ticket workspace들의 git 
 
 ### Priority Matrix
 
-| Factor | Weight | Scoring |
-|:---|:---|:---|
-| **Urgency (Label)** | 40% | P0=100, P1=70, P2=40, P3=20, None=30 |
-| **Due Date** | 30% | (아래 키워드 테이블 참조) |
-| **Quick Win** | 20% | 1시간 이내=100, 반나절=70, 하루=50, 이틀+=30 |
-| **Dependency** | 10% | 독립 실행=100, FE 대기=50, 외부 의존=30, Blocked=0 |
-| **Category** | Bonus | QA/Bug=+10 |
+| Factor | Weight | Scoring | Source |
+|:---|:---|:---|:---|
+| **Urgency (Label)** | 35% | P0=100, P1=70, P2=40, P3=20, None=30 | GitHub Label (`priority:P0`~`P3`, `critical`, `urgent`) |
+| **Due Date** | 25% | 오늘=100, 내일=80, 이번주=60 | GitHub Milestone `due_on` 또는 Issue 본문의 마감일 |
+| **Quick Win** | 15% | 1시간 이내=100, 반나절=70, 하루=50, 이틀+=30 | Ticket Notes 또는 AI 추정 (이슈 복잡도 기반) |
+| **Dependency** | 10% | 독립 실행=100, 외부 의존=30, Blocked=0 | TASK_BOARD 인라인 메모 (`← **프론트 대기` 등) |
+| **Age (Idle)** | 15% | 0~3일=0, 4~7일=30, 8~14일=60, 22일 이상=100 | GitHub Issue `updated_at` 기준 경과일 |
 
-### Final Score
+### 멀티 프로젝트 우선순위
 
-```
-Score = (Urgency * 0.4) + (DueDate * 0.3) + (QuickWin * 0.2) + (Dependency * 0.1) + Bonus
-```
+여러 프로젝트(BW, EH, PR, BD 등) 티켓이 섞여 있을 때, Priority Score만으로 결정이 어려우면 아래 추가 기준을 적용한다.
+
+1. **현재 스프린트 포커스 프로젝트** 우선 — `tasks/SPRINT.md`의 Focus 필드 참조
+2. **Hotfix / Prod 장애** — 프로젝트 무관, 항상 최우선
+3. **동일 점수대**일 때 — 컨텍스트 스위칭 최소화를 위해 같은 프로젝트 티켓을 연속 처리
 
 | Score Range | Tag | 의미 |
 |:---|:---|:---|
@@ -95,118 +95,37 @@ Score = (Urgency * 0.4) + (DueDate * 0.3) + (QuickWin * 0.2) + (Dependency * 0.1
 | 40-59 | `[🟡 보통]` | 이번 주 내 처리 |
 | 0-39 | `[🟢 낮음]` | 여유 있을 때 처리 |
 
-### Due Date Keywords (한/영 매핑)
-
-| Keyword | DueDate Score |
-|:---|:---|
-| 오늘, today, ASAP | 100 |
-| 내일, tomorrow | 80 |
-| 이번 주, this week | 60 |
-| 다음 주, next week | 40 |
-| 미정, TBD | 20 |
-
-### Quick Win 판단 기준
-
-| 조건 | 점수 |
-|:---|:---|
-| 코드 변경 1-2 파일, 로직 단순 | 100 (1시간 이내) |
-| 코드 변경 3-5 파일, 테스트 필요 | 70 (반나절) |
-| 여러 서비스 연동, DB 마이그레이션 | 50 (하루) |
-| 설계 검토 필요, 대규모 리팩토링 | 30 (이틀+) |
-
-### Dependency 판단 기준
-
-| 상태 | 점수 |
-|:---|:---|
-| 독립 실행 가능 | 100 |
-| FE 배포 대기 | 50 |
-| 외부 의존 (타팀/고객사) | 30 |
-| Blocked (선행 작업 미완료) | 0 |
-
-### Idle State Logic
-
-- **Definition**: Status가 Active/In Progress이지만 `updated_at` < Today 00:00
-- **판단**: TASK_BOARD.md 주석의 날짜, CHANGESETS.md 날짜, ticket workspace git log 기준
-- **표시**: Note 컬럼에 `Idle {N}일` 추가
-
 ---
 
-## Phase 3: Report Generation
-
-### Output Structure
+## Phase 3: Report Generation (Output Structure)
 
 ```markdown
 # Daily Scrum: {YYYY-MM-DD} ({요일})
 
 ---
 
-## 금일 수행 업무 (Work Done)
-
+## 1. 금일 수행 업무 (Work Done)
 ### {Project} — {Summary}
 *   **{Description}** — {Detail}
     - CS/PR/commit 정보
-*   ...
 
----
-
-## 익일 계획 (Planned Work)
-
-### 1. 🚨 장기 미결 및 지연 (Overdue & High Risk)
-
+## 2. 익일 계획 (Planned Work)
+### 🚨 장기 미결 및 지연 (Overdue & High Risk)
 | Priority | Issue | Title | Status | Note |
 |:---|:---|:---|:---|:---|
 | [🔴 긴급] | [#{ID}](url) | {Title} | {Status} | {Note} |
 
-### 2. {Project} — Main Track
-
+### 🛠 Main Track & Others
 | Priority | Issue | Title | Status | Note |
 |:---|:---|:---|:---|:---|
 | [🟠 높음] | [#{ID}](url) | {Title} | {Status} | {Note} |
 
-### 3. QA 대응 및 기타
-
-| Priority | Issue | Title | Status | Note |
-|:---|:---|:---|:---|:---|
-| [🟡 보통] | [#{ID}](url) | {Title} | {Status} | {Note} |
-
-### 4. Idle (Low Priority)
-
-| Issue | Title | Status | Note |
-|:---|:---|:---|:---|
-| [#{ID}](url) | {Title} | {Status} | Idle {N}일 |
-
----
-
-## Sync Summary
-
+## 3. Sync Summary & 특이사항 (Special Notes)
 - 마지막 Sync: {date}
 - 동기화된 항목: {N}건
-- 수동 확인 필요: {N}건 (있으면 항목 나열)
+- {Critical Issues, Blockers, 의존성, 일정 리스크 등 백엔드 작업 시 유의점}
 
----
-
-## 특이 사항 (Special Notes)
-*   {Critical Issues, Blockers, 의존성, 일정 리스크}
-
-*Data Source: TASK_BOARD.md, CHANGESETS.md, git log*
 ```
-
-### Smart Merge Rules (기존 파일 업데이트 시)
-
-1. **Preserve Manual Entries**: "특이 사항"이나 수동으로 추가한 항목은 절대 삭제하지 않는다.
-2. **Move Completed**: 어제 "익일 계획"에 있던 항목 중 오늘 완료된 것은 "금일 수행 업무"로 이동한다.
-3. **Append New**: 새로 동기화된 티켓은 적절한 섹션에 추가한다.
-4. **Sort by Priority**: 각 섹션 내에서 Priority Score 내림차순 정렬한다.
-
-### Section Assignment Rules
-
-| 조건 | 배치 섹션 |
-|:---|:---|
-| Overdue (Target Date 경과) OR P0 | 🚨 장기 미결 및 지연 |
-| Active + Priority Score 40+ | {Project} — Main Track |
-| label: qa OR bug (최근 등록) | QA 대응 및 기타 |
-| Active + Idle (금일 업데이트 없음) + 비긴급 | Idle (Low Priority) |
-| Stage/Test 배포 대기 | 별도 섹션 (필요 시) |
 
 ---
 
@@ -216,24 +135,3 @@ Score = (Urgency * 0.4) + (DueDate * 0.3) + (QuickWin * 0.2) + (Dependency * 0.1
 ```
 prompts/DAILY_SCRUM.md 기반으로 Daily Scrum 보고서를 생성해줘.
 ```
-
-### Project Codes
-
-| Project | Code | Ticket Prefix |
-|:---|:---|:---|
-| My Project | BW | `T-BW-{ID}` |
-| Fourth Project | BD | `T-BD-{ID}` |
-| Third Project | PR | `T-PR-{ID}` |
-| Another Project | EH | `T-EH-{ID}` |
-| Fifth Project | IM | `T-IM-{ID}` |
-| Infrastructure | INFRA | `T-INFRA-{ID}` |
-
-### Priority Labels (GitHub)
-
-| Label | Urgency Score |
-|:---|:---|
-| `priority:P0`, `critical`, `urgent` | 100 |
-| `priority:P1`, `high` | 70 |
-| `priority:P2`, `medium` | 40 |
-| `priority:P3`, `low` | 20 |
-| (no label) | 30 |

@@ -13,12 +13,12 @@ Use this tag for production emergencies requiring immediate fix.
 Hotfix follows a **fast-track** flow — full BDD/TDD cycle is skipped.
 
 1. Create ticket (minimal: Summary + 1 Scenario)
-2. Branch: `hotfix/T-{Project}-{ID}--{desc}` from `main`/`master`
+2. Branch: `hotfix/T-{Project}-{ID}--{desc}` from production branch (check repo CLAUDE.md or fleet.yaml `branch`)
 3. Write regression test that reproduces the bug
 4. Fix the bug (minimal scope — fix only, no refactoring)
 5. Verify: regression test passes + existing tests don't break
-6. PR to `main` → deploy → verify in production
-7. Sync back to `stage`: merge `main` into `stage`
+6. PR to production branch → deploy → verify in production
+7. Post-deploy sync per repo's git strategy (e.g., rebuild stage, merge to integration branch)
 
 ## Implementation Plan Pattern
 
@@ -27,7 +27,7 @@ Hotfix follows a **fast-track** flow — full BDD/TDD cycle is skipped.
 
 #### [Pre]
 - [ ] Production impact assessed
-- [ ] Branch created from main/master (NOT stage)
+- [ ] Branch created from production branch (check repo CLAUDE.md or fleet.yaml `branch`)
 
 #### [Tasks]
 - [ ] IP-01: Regression test (reproduces the production bug)
@@ -35,9 +35,9 @@ Hotfix follows a **fast-track** flow — full BDD/TDD cycle is skipped.
 - [ ] IP-03: Verify existing tests pass
 
 #### [Post]
-- [ ] PR to main/master (NOT stage)
+- [ ] PR to production branch
 - [ ] Deployed and verified in production
-- [ ] main merged back to stage
+- [ ] Post-deploy sync per repo's git strategy
 ```
 
 ## Commit Convention
@@ -50,6 +50,6 @@ Hotfix follows a **fast-track** flow — full BDD/TDD cycle is skipped.
 
 - [ ] Fix is minimal scope (fix ONLY, no cleanup)
 - [ ] Regression test written
-- [ ] PR targets main/master (not stage)
+- [ ] PR targets production branch (check repo CLAUDE.md or fleet.yaml)
 - [ ] Deployed and verified in production
-- [ ] Stage synced after merge
+- [ ] Post-deploy sync completed per repo's git strategy

@@ -172,9 +172,13 @@ Before creating a ticket workspace, identify the target repo:
 
 **Core flow**: Scenario → Acceptance Test (Red) → TDD Implementation → Green → Commit
 
-## 3. Git Strategy
+## 3. Git Conventions
 
-**Branches**: main/master (production), stage (integration), feat/* (features), fix/* (fixes)
+Git branching strategy, commit format, and PR rules are defined in **each repo's CLAUDE.md**.
+Houston owns governance (tickets, evidence, process). Repos own implementation conventions.
+
+- `fleet.yaml`'s `branch` field determines the base branch for each repo.
+- If a repo has no CLAUDE.md, default to branching from and PR-ing to `fleet.yaml`'s `branch`.
 EOF
 
 # CHECKLIST.md (minimal starter)

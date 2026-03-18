@@ -64,7 +64,8 @@ lines-root/
 mkdir -p ../my-project
 git clone https://github.com/org/my-project-backend.git ../my-project/source
 cd ../my-project/source
-git checkout stage  # My Project uses 'stage' as base for features
+# Base branch는 fleet.yaml의 branch 필드 참조 (BW: develop)
+git checkout develop
 ```
 
 ---
@@ -92,8 +93,8 @@ This is the most crucial step. **Do not skip.**
 Use our automation script to pull the code and create a safe sandbox.
 
 **Important**: Ensure your source repository is on the correct **Base Branch** before running this.
--   **My Project**: `stage` (Features) or `master` (Hotfix)
--   **Others**: `master`
+-   각 repo의 base branch는 `.houston/fleet.yaml`의 `branch` 필드를 참조하세요.
+-   예: My Project → `develop`, Another Project → `master`
 
 ```bash
 # ./scripts/new_ticket.sh <Target_Repo_Path> <Ticket_ID> <Description>

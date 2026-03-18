@@ -8,6 +8,9 @@
 #   houston status [--fetch]
 #   houston info   <CODE>
 #   houston archive [--days N] [--dry-run]
+#   houston dock   <repo_url> --code <CODE> [--branch <branch>] [--name "<name>"] [--stack <stack>]
+#   houston dock   --existing <path> --code <CODE> [--name "<name>"] [--stack <stack>]
+#   houston undock <CODE>
 #   houston build
 #   houston init   [path]
 #
@@ -111,6 +114,14 @@ case "$CMD" in
     exec "$SCRIPT_DIR/houston-resume.sh" "$@"
     ;;
 
+  dock)
+    exec "$SCRIPT_DIR/houston-dock.sh" "$@"
+    ;;
+
+  undock)
+    exec "$SCRIPT_DIR/houston-undock.sh" "$@"
+    ;;
+
   archive)
     exec "$SCRIPT_DIR/houston-archive.sh" "$@"
     ;;
@@ -137,6 +148,8 @@ case "$CMD" in
     echo "  info    <CODE>                            Show project info"
     echo "  work    <TICKET_ID>                        Launch AI agent with ticket context"
     echo "  resume  <TICKET_ID>                        Resume scan (without launching agent)"
+    echo "  dock    <repo_url> --code <CODE> [opts]     Register repo in fleet"
+    echo "  undock  <CODE>                             Remove repo from fleet"
     echo "  archive [--days N] [--dry-run]             Archive completed Change Sets"
     echo "  publish [--dry-run]                        Sync to public repo"
     echo "  build                                     Rebuild agent adapters"

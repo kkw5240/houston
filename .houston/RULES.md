@@ -143,6 +143,9 @@ When resuming interrupted work:
 
 ## Commit Rules
 
+> **Repo override**: 각 repo의 CLAUDE.md에 커밋 규칙이 정의되어 있으면 repo의 규칙을 따른다.
+> 아래는 repo에 별도 규칙이 없을 때 적용되는 Houston 기본값이다.
+
 **Message format:**
 ```bash
 git commit -m "$(cat <<'EOF'
