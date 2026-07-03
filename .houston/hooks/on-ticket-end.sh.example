@@ -1,0 +1,33 @@
+#!/bin/bash
+# ============================================================
+# on-ticket-end.sh — Hook executed before ticket workspace removal
+#
+# Available environment variables:
+#   TICKET_ID      — e.g., "T-BW-1700"
+#   WORKSPACE_PATH — absolute path to the workspace being closed
+#   PROJECT_CODE   — e.g., "BW"
+#   BRANCH_NAME    — e.g., "feat/T-BW-1700--CS-01"
+#   HOUSTON_ROOT   — absolute path to Houston workspace root
+#
+# This hook is non-blocking: if it fails, a warning is printed
+# but workspace removal continues normally.
+#
+# To activate: copy this file without .example extension and chmod +x
+#   cp on-ticket-end.sh.example on-ticket-end.sh
+#   chmod +x on-ticket-end.sh
+# ============================================================
+
+echo "🧹 Running cleanup for $TICKET_ID ($PROJECT_CODE)..."
+
+# Example: Deactivate virtual environment
+# if [ -d "$WORKSPACE_PATH/.venv" ]; then
+#   echo "   🗑️ Virtual environment will be removed with workspace"
+# fi
+
+# Example: Clean up temp files
+# if [ -d "$WORKSPACE_PATH/tmp" ]; then
+#   echo "   🗑️ Cleaning temp files..."
+#   rm -rf "$WORKSPACE_PATH/tmp"
+# fi
+
+echo "✅ Cleanup hook complete for $TICKET_ID"

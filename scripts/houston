@@ -1,0 +1,313 @@
+#!/bin/bash
+# ============================================================
+# houston — Mission Control CLI
+#
+# Usage:
+#   houston ticket <CODE|PATH> <TICKET_ID> [DESC]
+#   houston close  <TICKET_PATH>
+#   houston status [--fetch]
+#   houston info   <CODE>
+#   houston archive [--days N] [--dry-run]
+#   houston dock   <repo_url> --code <CODE> [--branch <branch>] [--name "<name>"] [--stack <stack>]
+#   houston dock   --existing <path> --code <CODE> [--name "<name>"] [--stack <stack>]
+#   houston undock <CODE>
+#   houston sessions [--json]
+#   houston attach <TICKET_ID|TICKET_PATH> [--json]
+#   houston build
+#   houston init   [path]
+#   houston work   [--agent <cli>] <TICKET_ID> [--tmux]
+#   houston resume-context --check|--ensure [TICKET_ID]
+#   houston tmux-safe <session> <cwd> [command...]
+#
+# Like git-flow, but for multi-repo workspace governance.
+# ============================================================
+
+set -e
+
+# --- Load common library ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve symlinks (for global /usr/local/bin/houston symlink)
+source_path="$0"
+while [ -L "$source_path" ]; do
+  link_dir="$(cd "$(dirname "$source_path")" && pwd)"
+  source_path="$(readlink "$source_path")"
+  [[ "$source_path" != /* ]] && source_path="$link_dir/$source_path"
+done
+SCRIPT_DIR="$(cd "$(dirname "$source_path")" && pwd)"
+
+source "$SCRIPT_DIR/houston-lib.sh"
+
+print_houston_help() {
+  echo "🛰️  Houston — Mission Control CLI"
+  echo ""
+  echo "Usage: houston <command> [args]"
+  echo ""
+  echo "Commands:"
+  echo "  ticket  <CODE|PATH> <TICKET_ID> [DESC]   Create ticket workspace"
+  echo "  close   <TICKET_PATH>                     Close ticket workspace"
+  echo "  active                                    Show active workspaces"
+  echo "  briefing|brief                            Session briefing (status overview)"
+  echo "  board   [--write|--out PATH|--source PATH]  Derived task board (CHANGESETS non-Done slice)"
+  echo "  status  [--fetch]                         Fleet status"
+  echo "  info    <CODE>                            Show project info"
+  echo "  work    [--agent <cli>] <TICKET_ID>        Launch AI agent with ticket context"
+  echo "  resume-context --check|--ensure [TICKET_ID]  Check/regenerate derived resume context"
+  echo "  tmux-safe <session> <cwd> [command...]      Launch persistent tmux session"
+  echo "  orbit   [tree|relabel|archive|--mark ...]  Mission-tree orbit (scan/tree/number/archive)"
+  echo "  resume  <TICKET_ID>                        Resume scan (without launching agent)"
+  echo "  dock    <repo_url> --code <CODE> [opts]     Register repo in fleet"
+  echo "  undock  <CODE>                             Remove repo from fleet"
+  echo "  archive [--days N] [--dry-run]             Archive completed Change Sets"
+  echo "  publish [--dry-run]                        Sync to public repo"
+  echo "  build                                     Rebuild agent adapters"
+  echo "  setup   [--dry-run] [--mc-local-deny]      Provision agent permissions (idempotent)"
+  echo "  sessions [--json]                         List Houston tmux sessions"
+  echo "  attach  <TICKET_ID|TICKET_PATH> [--json]  Attach to Houston tmux ticket window"
+  echo "  init    [path]                            Initialize new workspace"
+  echo "  help                                      Show help"
+  echo ""
+  echo "Examples:"
+  echo "  houston ticket XX T-XX-100 feature-name"
+  echo "  houston briefing"
+  echo "  houston active"
+  echo "  houston info YY"
+}
+
+# --- Go migration shim ---
+# During the Houston v2 migration, bash remains the compatibility dispatcher
+# for commands that are not yet migrated. Commands with a verified Go
+# implementation can be delegated here so all entrypoints (terminal, Skills,
+# Claude/OMC, Gemini, Codex/OMX) converge on the same deterministic core.
+find_houston_go_binary() {
+  [ "${HOUSTON_DISABLE_GO_SHIM:-}" = "1" ] && return 1
+
+  local candidate
+  local self_path
+  self_path="$(cd "$(dirname "$SCRIPT_DIR/houston")" && pwd)/$(basename "$SCRIPT_DIR/houston")"
+  for candidate in \
+    "${HOUSTON_GO_BINARY:-}" \
+    "${HOUSTON_ROOT:-}/.cache/houston" \
+    "${HOUSTON_ROOT:-}/bin/houston-go" \
+    "${HOUSTON_ROOT:-}/bin/houston"
+  do
+    [ -n "$candidate" ] || continue
+    [ -x "$candidate" ] || continue
+    # Avoid accidentally re-execing this bash dispatcher.
+    [ "$(cd "$(dirname "$candidate")" && pwd)/$(basename "$candidate")" != "$self_path" ] || continue
+    printf '%s\n' "$candidate"
+    return 0
+  done
+  return 1
+}
+
+# --- Commands that don't require an existing workspace ---
+case "${1:-}" in
+  init)
+    shift
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" init "$@"
+    fi
+    exec "$SCRIPT_DIR/houston-init.sh" "$@"
+    ;;
+  help|--help|-h|"")
+    print_houston_help
+    exit 0
+    ;;
+esac
+
+# --- All other commands require a Houston workspace ---
+HOUSTON_ROOT=$(find_houston_root) || {
+  echo "❌ Not inside a Houston workspace (.houston/ not found)" >&2
+  exit 1
+}
+
+FLEET="$HOUSTON_ROOT/.houston/fleet.yaml"
+
+# --- Command dispatch ---
+CMD="${1:-help}"
+shift || true
+
+case "$CMD" in
+  ticket)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" ticket "$@"
+    fi
+
+    SOURCE="$1"
+    TICKET_ID="${2:-}"
+    DESC="${3:-}"
+
+    if [ -z "$SOURCE" ] || [ -z "$TICKET_ID" ]; then
+      echo "Usage: houston ticket <CODE|PATH> <TICKET_ID> [DESC]"
+      echo ""
+      echo "Examples:"
+      echo "  houston ticket XX T-XX-100 feature-name"
+      echo "  houston ticket ../my-project/source T-XX-100 feature-name"
+      exit 1
+    fi
+
+    # Determine if CODE mode or PATH mode
+    if [[ "$SOURCE" != */* ]] && [ ! -d "$SOURCE" ]; then
+      # CODE mode: lookup from fleet.yaml
+      fleet_lookup "$SOURCE" || exit 1
+      # Pass resolved path + branch info to new_ticket.sh via env
+      export HOUSTON_BASE_BRANCH="$FLEET_BRANCH"
+      exec "$SCRIPT_DIR/new_ticket.sh" "$FLEET_PATH" "$TICKET_ID" "$DESC"
+    else
+      # PATH mode: direct path (backward compatible)
+      exec "$SCRIPT_DIR/new_ticket.sh" "$SOURCE" "$TICKET_ID" "$DESC"
+    fi
+    ;;
+
+  close)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" close "$@"
+    fi
+    exec "$SCRIPT_DIR/close_ticket.sh" "$@"
+    ;;
+
+  status)
+    exec "$SCRIPT_DIR/houston-status.sh" "$@"
+    ;;
+
+  active)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" active "$@"
+    fi
+    exec "$SCRIPT_DIR/houston-active.sh" "$@"
+    ;;
+
+  briefing|brief)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" "$CMD" "$@"
+    fi
+    exec "$SCRIPT_DIR/houston-briefing.sh" "$@"
+    ;;
+
+  board)
+    # T-HOU-009 CS-02 — TASK_BOARD as a DERIVED view of CHANGESETS non-Done slice.
+    #   houston board                 render to stdout (non-destructive)
+    #   houston board --write         regenerate tasks/TASK_BOARD.md
+    #   houston board --out PATH      write to PATH (preview / test)
+    exec "$SCRIPT_DIR/houston-board.sh" "$@"
+    ;;
+
+  info)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" info "$@"
+    fi
+    CODE="$1"
+    if [ -z "$CODE" ]; then
+      echo "Usage: houston info <CODE>"
+      echo "Example: houston info XX"
+      exit 1
+    fi
+    fleet_info "$CODE"
+    ;;
+
+  work)
+    for arg in "$@"; do
+      if [ "$arg" = "--tmux" ]; then
+        if GO_BINARY=$(find_houston_go_binary); then
+          exec "$GO_BINARY" work "$@"
+        fi
+        echo "❌ houston work --tmux requires the Go Houston binary" >&2
+        echo "Run 'go build -o .cache/houston ./cmd/houston' and retry." >&2
+        exit 1
+      fi
+    done
+    exec "$SCRIPT_DIR/houston-work.sh" "$@"
+    ;;
+
+  tmux-safe|tmux_safe|safe-tmux)
+    exec "$SCRIPT_DIR/houston-tmux-safe-launch.sh" "$@"
+    ;;
+
+  orbit)
+    # Mission-tree orbit: scan / tree / relabel / archive / --mark (T-HOU-025 G1).
+    #   houston orbit                       default lint scan
+    #   houston orbit tree [--color]        ASCII parent-child mission tree
+    #   houston orbit relabel [--dry-run]   number the raw tmux list
+    #   houston orbit archive [--days N] [--yes] [--dry-run]
+    #   houston orbit --mark <session> <short_running|long_running|pinned>
+    exec "$SCRIPT_DIR/houston-orbit.sh" "$@"
+    ;;
+
+  resume)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" resume "$@"
+    fi
+    exec "$SCRIPT_DIR/houston-resume.sh" "$@"
+    ;;
+
+  resume-context)
+    exec "$SCRIPT_DIR/houston-resume-context.sh" "$@"
+    ;;
+
+  dock)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" dock "$@"
+    fi
+    exec "$SCRIPT_DIR/houston-dock.sh" "$@"
+    ;;
+
+  undock)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" undock "$@"
+    fi
+    exec "$SCRIPT_DIR/houston-undock.sh" "$@"
+    ;;
+
+  archive)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" archive "$@"
+    fi
+    exec "$SCRIPT_DIR/houston-archive.sh" "$@"
+    ;;
+
+  publish)
+    exec "$SCRIPT_DIR/houston-publish.sh" "$@"
+    ;;
+
+  build)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" build "$@"
+    fi
+    exec "$HOUSTON_ROOT/.houston/build.sh"
+    ;;
+
+  setup)
+    # Idempotent agent-permission provisioning (T-HOU-021).
+    # Applies machine-local pieces of the agent permission model; the committed
+    # .claude/settings.json (launcher allow + deny floor) activates via folder trust.
+    exec "$SCRIPT_DIR/houston-install-permissions.sh" "$@"
+    ;;
+
+  sessions)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" sessions "$@"
+    fi
+    echo "❌ Unknown command: sessions" >&2
+    echo "Run 'houston help' for usage." >&2
+    exit 1
+    ;;
+
+  attach)
+    if GO_BINARY=$(find_houston_go_binary); then
+      exec "$GO_BINARY" attach "$@"
+    fi
+    echo "❌ Unknown command: attach" >&2
+    echo "Run 'houston help' for usage." >&2
+    exit 1
+    ;;
+
+  help|--help|-h)
+    print_houston_help
+    ;;
+
+  *)
+    echo "❌ Unknown command: $CMD" >&2
+    echo "Run 'houston help' for usage." >&2
+    exit 1
+    ;;
+esac

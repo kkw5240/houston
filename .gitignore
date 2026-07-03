@@ -1,0 +1,37 @@
+# Service Repositories (docked repos — registered via houston dock)
+# Add patterns matching your docked repo directories here.
+# Example:
+# my-project/
+# another-project/
+
+# System & Environment
+.DS_Store
+Thumbs.db
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.log
+.env
+.env.*
+
+# Temporary Workspaces
+temp/
+tmp/
+*.tmp
+
+# Temp Artifacts
+*.json
+*_body.md
+*_table.md
+
+# Editor/IDE
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+*.swp

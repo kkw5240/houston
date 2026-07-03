@@ -1,0 +1,34 @@
+# Houston Workspace Configuration
+# Customize tools here. Process/policy rules live in .houston/*.md files.
+
+# Agent adapters to generate from .houston/ sources.
+# Each path is relative to workspace root.
+# Remove or add entries to match your team's AI tools.
+adapters:
+  - AGENTS.md
+  - CLAUDE.md
+  - .cursorrules
+  - .windsurfrules
+  - GEMINI.md
+  - ANTIGRAVITY.md
+  - .github/copilot-instructions.md
+
+# AI Agent CLI for `houston work` command.
+# Supported: claude, gemini, codex, agy
+agent:
+  cli: codex
+  # auto_resume: automatically run resume scan and inject context
+  auto_resume: true
+
+# Lifecycle hooks — run on ticket workspace events
+# Hook scripts receive env vars: TICKET_ID, WORKSPACE_PATH, PROJECT_CODE, BRANCH_NAME
+# Hooks are non-blocking: failure prints a warning but does not abort.
+# Per-project overrides can be set in fleet.yaml under each project's hooks: section.
+lifecycle_hooks:
+  on_ticket_start: ".houston/hooks/on-ticket-start.sh"
+  on_ticket_end: ".houston/hooks/on-ticket-end.sh"
+
+# Git hooks
+hooks:
+  # Auto-rebuild adapters when .houston/ source files change
+  pre_commit_build: true

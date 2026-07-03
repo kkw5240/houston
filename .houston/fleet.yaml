@@ -1,0 +1,17 @@
+# .houston/fleet.yaml
+# Houston Fleet Manifest — repositories managed by this control tower
+#
+# Register repos with:  houston dock <repo_url> --code <CODE>
+#   or manually:        scripts/houston-dock.sh <repo_url> --code <CODE>
+# Remove repos with:    scripts/houston-undock.sh <CODE>
+#
+# Example entry:
+#   - code: XX
+#     name: My Backend Service
+#     repo: https://github.com/org/my-backend.git
+#     branch: master
+#     path: my-project/source
+#     stack: python/fastapi
+#     has_claude_md: true
+
+fleet:
